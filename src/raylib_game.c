@@ -1,3 +1,5 @@
+#include "window.h"
+
 #include "raylib.h"
 
 #if defined(PLATFORM_WEB)
@@ -8,44 +10,35 @@ Font font = { 0 };
 
 #define BG_COLOR CLITERAL(Color) { 50, 49, 64, 255 }
 
-static const int screenWidth = 800;
-static const int screenHeight = 450;
-
-static void UpdateDrawFrame(void);
-
-int main(void)
+void raylib_show(const char* title, uint32_t viewport_width, uint32_t viewport_height)
 {
-    InitWindow(screenWidth, screenHeight, "3d Demo");
+    InitWindow(viewport_width, viewport_height, title);
 
     // Load global data (assets that must be available in all screens, i.e. font)
     font = LoadFont("resources/mecha.png");
+}
 
-#if defined(PLATFORM_WEB)
-    emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
-#else
-    SetTargetFPS(60);
+void raylib_on_update(Window* window, float ts)
+{
+    window->is_open = (int)!WindowShouldClose();
+}
 
-    // Detect window close button or ESC key
-    while (!WindowShouldClose())
-    {
-        UpdateDrawFrame();
-    }
-#endif
+void raylib_draw_pixel(float x, float y, MyColor color)
+{
+    Color c = (Color){color.red, color.green, color.blue, color.alpha};
+    BeginDrawing();
 
+    ClearBackground(BG_COLOR);
+    DrawPixel((int)x, (int)y, c);
+
+    EndDrawing();
+}
+
+void raylib_close_window()
+{
     // Unload global data loaded
     UnloadFont(font);
 
     // Close window and OpenGL context
     CloseWindow();
-
-    return 0;
-}
-
-static void UpdateDrawFrame(void)
-{
-    BeginDrawing();
-
-        ClearBackground(BG_COLOR);
-
-    EndDrawing();
 }
