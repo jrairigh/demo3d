@@ -7,12 +7,13 @@ const int screen_height = 600;
 
 void render(Window* window)
 {
-    Triangle t = (Triangle){ 
-        vec2(-0.75f, 0.1f),  // p0
-        vec2(0.75f, 0.6f),   // p1
-        vec2(0.75f, -0.8f)   // p2
+    Triangle t[4] = {
+        triangle(vec2(-1.0f, 0.0f), vec2(0.0f, 1.0f), vec2(0.0f, 0.0f), color(255,0,0,255)),
+        triangle(vec2(-1.0f, 0.0f), vec2(0.0f, 0.0f), vec2(0.0f, -1.0f), color(0,255,0,255)),
+        triangle(vec2(0.0f, 1.0f), vec2(1.0f, 0.0f), vec2(0.0f, 0.0f), color(0,0,255,255)),
+        triangle(vec2(1.0f, 0.0f), vec2(0.0f, -1.0f), vec2(0.0f, -0.0f), color(255,0,255,255)),
     };
-    draw_triangle(window, t, color(0,255,0,255));
+    draw_triangles(window, t, 4);
 }
 
 int main()

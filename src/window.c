@@ -85,7 +85,17 @@ MyColor color(const uint8_t red, const uint8_t green, const uint8_t blue, const 
     return (MyColor) { red, green, blue, alpha };
 }
 
-int is_inside_triangle(const Vec2 p, const Triangle triangle)
+Triangle triangle(const Vec2 p0, const Vec2 p1, const Vec2 p2, const MyColor color)
+{
+    Triangle t;
+    t.p0 = p0;
+    t.p1 = p1;
+    t.p2 = p2;
+    t.color = color;
+    return t;
+}
+
+static int is_inside_triangle(const Vec2 p, const Triangle triangle)
 {
     Vec2 p0p1 = difference(triangle.p1, triangle.p0);
     Vec2 p1p2 = difference(triangle.p2, triangle.p1);
@@ -106,27 +116,26 @@ void draw_pixel(Window* window, const Vec2 p1, const MyColor color)
     window->draw_pixel(p1.x, p1.y, color);
 }
 
-void draw_triangle(Window* window, const Triangle triangle, const MyColor color_unused)
+void draw_triangles(Window* window, const Triangles triangle, const uint32_t triangle_count)
 {
-    const MyColor start_color = color(255,0,0,255);
-    const MyColor end_color = color(0,0,255,255);
-    const uint32_t size = window->viewport_width * window->viewport_height;
+    for (uint32_t i = 0; i < triangle_count; ++i)
+    {
+        draw_triangle(window, triangle[i]);
+    }
+}
+
+void draw_triangle(Window* window, const Triangle triangle)
+{
     for (uint32_t i = 0; i < window->viewport_height; ++i)
     {
         for (uint32_t j = 0; j < window->viewport_width; ++j)
         {
-            const uint32_t index = i * window->viewport_width + j;
-            const float t = (float)index / (float)size;
             const float nx = j * (2.0f / window->viewport_width) - 1.0f;
             const float ny = 1.0f - i * (2.0f / window->viewport_height);
             const Vec2 p = vec2(nx, ny);
-            // for each triangle
-            {
-                MyColor c = lerp_color(start_color, end_color, t);
-                if (is_inside_triangle(p, triangle))
-                    window->draw_pixel(nx, ny, c);
-            }
-            // end
+
+            if (is_inside_triangle(p, triangle))
+                window->draw_pixel(nx, ny, triangle.color);
         }
     }
 }
