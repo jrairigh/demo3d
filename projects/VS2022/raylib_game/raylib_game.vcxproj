@@ -347,7 +347,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\main.c" />
-    <ClCompile Include="..\..\..\src\raylib_game.c" />
+    <ClCompile Include="..\..\..\src\raylib_impl.c" />
     <ClCompile Include="..\..\..\src\window.c" />
   </ItemGroup>
   <ItemGroup>

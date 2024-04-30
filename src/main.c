@@ -1,18 +1,23 @@
 #include "window.h"
 
-const int screenWidth = 800;
-const int screenHeight = 450;
+#include <stdio.h>
 
-void render(const Window* window)
+const int screen_width = 800;
+const int screen_height = 600;
+
+void render(Window* window)
 {
-    float x = window->viewport_width / 2.0f;
-    float y = window->viewport_height / 2.0f;
-    window->draw_pixel(x, y, (MyColor){ 0, 255, 0, 255 });
+    Triangle t = (Triangle){ 
+        vec2(-0.75f, 0.1f),  // p0
+        vec2(0.75f, 0.6f),   // p1
+        vec2(0.75f, -0.8f)   // p2
+    };
+    draw_triangle(window, t, color(0,255,0,255));
 }
 
 int main()
 {
-    Window* window = show("3d Demo", screenWidth, screenHeight);
+    Window* window = show("3d Demo", screen_width, screen_height);
     update(window, 0.16667f);
     close_window(&window);
     return 0;
