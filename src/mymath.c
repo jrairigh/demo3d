@@ -38,13 +38,13 @@ int is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2
     const Vec2 p0p1 = vec2_minus_vec2(p1, p0);
     const Vec2 p1p2 = vec2_minus_vec2(p2, p1);
     const Vec2 p2p0 = vec2_minus_vec2(p0, p2);
-    const Vec2 p0p =  vec2_minus_vec2(v, p0);
-    const Vec2 p1p =  vec2_minus_vec2(v, p1);
-    const Vec2 p2p =  vec2_minus_vec2(v, p2);
+    const Vec2 p0v =  vec2_minus_vec2(v, p0);
+    const Vec2 p1v =  vec2_minus_vec2(v, p1);
+    const Vec2 p2v =  vec2_minus_vec2(v, p2);
 
-    const float a = vec2_determinant(p0p, p0p1);
-    const float b = vec2_determinant(p1p, p1p2);
-    const float c = vec2_determinant(p2p, p2p0);
+    const float a = vec2_determinant(p0v, p0p1);
+    const float b = vec2_determinant(p1v, p1p2);
+    const float c = vec2_determinant(p2v, p2p0);
 
     return a >= 0 && b >= 0 && c >= 0;
 }
