@@ -277,7 +277,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\lib\raylib50\core\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
       <RemoveUnreferencedCodeData>true</RemoveUnreferencedCodeData>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
@@ -347,11 +347,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\main.c" />
+    <ClCompile Include="..\..\..\src\mymath.c" />
     <ClCompile Include="..\..\..\src\raylib_impl.c" />
+    <ClCompile Include="..\..\..\src\types.c" />
     <ClCompile Include="..\..\..\src\window.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\mymath.h" />
     <ClInclude Include="..\..\..\src\raylib_impl.h" />
+    <ClInclude Include="..\..\..\src\types.h" />
     <ClInclude Include="..\..\..\src\window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

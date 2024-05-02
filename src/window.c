@@ -1,8 +1,10 @@
 #include "window.h"
+#include "mymath.h"
 
 #include "raylib_impl.h"
 
 #include <math.h>
+#include <stdio.h>
 
 Window* create_window_impl()
 {
@@ -16,18 +18,20 @@ Window* create_window_impl()
     return window;
 }
 
-Window* show(const char* title, uint32_t viewport_width, uint32_t viewport_height)
+Window* show(const char* title, const uint32_t viewport_width, const uint32_t viewport_height)
 {
     Window* window = create_window_impl();
     window->title = title;
     window->viewport_width = viewport_width;
     window->viewport_height = viewport_height;
+    window->aspect_ratio = (float)viewport_width / (float)viewport_height;
     window->is_open = 1;
     window->show(title, viewport_width, viewport_height);
+    window->view_matrix = perspective_matrix(window->aspect_ratio, 40.0f, 1.0f, 100.0f);
     return window;
 }
 
-void update(Window* window, float ts)
+void update(Window* window, const float ts)
 {
     while (window->is_open > 0)
     {
@@ -46,74 +50,17 @@ void close_window(Window** window_ptr)
     *window_ptr = NULL;
 }
 
-float determinant(const Vec2 p0, const Vec2 p1)
+void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
 {
-    return p0.x * p1.y - p1.x * p0.y;
-}
+    Vec3 p2 = mat4_x_vec3(window->view_matrix, p1);
+    if (p2.z == 0.0f)
+    {
+        printf("z is zero");
+        return;
+    }
 
-float magnitude(const Vec2 p)
-{
-    return sqrtf(p.x * p.x + p.y * p.y);
-}
-
-Vec2 difference(const Vec2 a, const Vec2 b)
-{
-    return vec2(a.x - b.x, a.y - b.y);
-}
-
-float lerpf(const float a, const float b, const float t)
-{
-    return (1.0f - t) * a + t * b;
-}
-
-MyColor lerp_color(const MyColor a, const MyColor b, const float t)
-{
-    float red = lerpf(a.red, b.red, t);
-    float green = lerpf(a.green, b.green, t);
-    float blue = lerpf(a.blue, b.blue, t);
-    float alpha = lerpf(a.alpha, b.alpha, t);
-    return color((uint8_t)red % 256, (uint8_t)green % 256, (uint8_t)blue % 256, (uint8_t)alpha % 256);
-}
-
-Vec2 vec2(const float x, const float y)
-{
-    return (Vec2) { x, y };
-}
-
-MyColor color(const uint8_t red, const uint8_t green, const uint8_t blue, const uint8_t alpha)
-{
-    return (MyColor) { red, green, blue, alpha };
-}
-
-Triangle triangle(const Vec2 p0, const Vec2 p1, const Vec2 p2, const MyColor color)
-{
-    Triangle t;
-    t.p0 = p0;
-    t.p1 = p1;
-    t.p2 = p2;
-    t.color = color;
-    return t;
-}
-
-static int is_inside_triangle(const Vec2 p, const Triangle triangle)
-{
-    Vec2 p0p1 = difference(triangle.p1, triangle.p0);
-    Vec2 p1p2 = difference(triangle.p2, triangle.p1);
-    Vec2 p2p0 = difference(triangle.p0, triangle.p2);
-    Vec2 p0p = difference(p, triangle.p0);
-    Vec2 p1p = difference(p, triangle.p1);
-    Vec2 p2p = difference(p, triangle.p2);
-
-    float a = determinant(p0p, p0p1);
-    float b = determinant(p1p, p1p2);
-    float c = determinant(p2p, p2p0);
-
-    return a >= 0 && b >= 0 && c >= 0;
-}
-
-void draw_pixel(Window* window, const Vec2 p1, const MyColor color)
-{
-    window->draw_pixel(p1.x, p1.y, color);
+    const Vec2 device_coordinate = vec2(p2.x / p2.z, p2.y / p2.z);
+    window->draw_pixel(device_coordinate, color);
 }
 
 void draw_triangles(Window* window, const Triangles triangle, const uint32_t triangle_count)
@@ -130,12 +77,26 @@ void draw_triangle(Window* window, const Triangle triangle)
     {
         for (uint32_t j = 0; j < window->viewport_width; ++j)
         {
-            const float nx = j * (2.0f / window->viewport_width) - 1.0f;
-            const float ny = 1.0f - i * (2.0f / window->viewport_height);
-            const Vec2 p = vec2(nx, ny);
+            const float width_percentage = (float)j / window->viewport_width;
+            const float height_percentage = (float)i / window->viewport_height;
+            const float normalized_x = 2.0f * width_percentage - 1.0f;
+            const float normalized_y = 1.0f - 2.0f * height_percentage;
+            const Vec2 device_coordinate = vec2(normalized_x, normalized_y);
+            const Vec3 p0 = mat4_x_vec3(window->view_matrix, triangle.p0);
+            const Vec3 p1 = mat4_x_vec3(window->view_matrix, triangle.p1);
+            const Vec3 p2 = mat4_x_vec3(window->view_matrix, triangle.p2);
 
-            if (is_inside_triangle(p, triangle))
-                window->draw_pixel(nx, ny, triangle.color);
+            if (p0.z * p1.z * p2.z == 0.0f)
+            {
+                printf("z is zero");
+                return;
+            }
+
+            const Vec2 p0_ = vec2(p0.x / p0.z, p0.y / p0.z);
+            const Vec2 p1_ = vec2(p1.x / p1.z, p1.y / p1.z);
+            const Vec2 p2_ = vec2(p2.x / p2.z, p2.y / p2.z);
+            if (is_inside_triangle(device_coordinate, p0_, p1_, p2_))
+                window->draw_pixel(device_coordinate, triangle.color);
         }
     }
 }
