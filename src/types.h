@@ -2,22 +2,27 @@
 
 #include <stdint.h>
 
-typedef struct _tagColor
+typedef int bool;
+
+extern const int true;
+extern const int false;
+
+typedef struct MyColor
 {
     uint8_t red, green, blue, alpha;
 } MyColor;
 
-typedef struct _tagVec2
+typedef struct Vec2
 {
     float x, y;
 } Vec2;
 
-typedef struct _tagVec3
+typedef struct Vec3
 {
     float x, y, z;
 } Vec3;
 
-typedef struct _tagMatrix
+typedef struct Mat4
 {
     /*    0  1  2  3
       0 | v  v  v  v |
@@ -31,7 +36,7 @@ typedef struct _tagMatrix
         v30, v31, v32, v33;
 } Mat4;
 
-typedef struct _tagTriangle
+typedef struct Triangle
 {
     Vec3 p0, p1, p2;
     MyColor color;

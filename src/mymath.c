@@ -3,6 +3,8 @@
 #include <math.h>
 
 const float pi = 3.14159265f;
+const int true = 1;
+const int false = 0;
 
 float vec2_determinant(const Vec2 p0, const Vec2 p1)
 {
@@ -33,7 +35,7 @@ MyColor lerp_color(const MyColor a, const MyColor b, const float t)
     return color((uint8_t)red % 256, (uint8_t)green % 256, (uint8_t)blue % 256, (uint8_t)alpha % 256);
 }
 
-int is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2)
+bool is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2)
 {
     const Vec2 p0p1 = vec2_minus_vec2(p1, p0);
     const Vec2 p1p2 = vec2_minus_vec2(p2, p1);

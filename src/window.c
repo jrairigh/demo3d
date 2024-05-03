@@ -6,6 +6,10 @@
 #include <math.h>
 #include <stdio.h>
 
+float g_fov = 40.0f;
+float g_near_z = 1.0f;
+float g_far_z = 100.0f;
+
 Window* create_window_impl()
 {
     Window* window = (Window*)malloc(sizeof(Window));
@@ -15,26 +19,31 @@ Window* create_window_impl()
     window->draw_pixel = raylib_draw_pixel;
     window->close_window = raylib_close_window;
     window->show = raylib_show;
+    window->get_viewport_width = raylib_viewport_width;
+    window->get_viewport_height = raylib_viewport_height;
     return window;
 }
 
-Window* show(const char* title, const uint32_t viewport_width, const uint32_t viewport_height)
+Window* show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
 {
     Window* window = create_window_impl();
     window->title = title;
-    window->viewport_width = viewport_width;
-    window->viewport_height = viewport_height;
-    window->aspect_ratio = (float)viewport_width / (float)viewport_height;
-    window->is_open = 1;
-    window->show(title, viewport_width, viewport_height);
-    window->view_matrix = perspective_matrix(window->aspect_ratio, 40.0f, 1.0f, 100.0f);
+    window->screen_width = screen_width;
+    window->screen_height = screen_height;
+    window->is_open = true;
+    window->show(title, screen_width, screen_height);
+
     return window;
 }
 
 void update(Window* window, const float ts)
 {
-    while (window->is_open > 0)
+    while (window->is_open)
     {
+        const float viewport_width = window->get_viewport_width();
+        const float viewport_height = window->get_viewport_height();
+        const float aspect_ratio = viewport_width / viewport_height;
+        window->view_matrix = perspective_matrix(aspect_ratio, g_fov, g_near_z, g_far_z);
         window->on_update(window, ts);
         window->pre_render();
         render(window);
@@ -55,7 +64,7 @@ void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
     Vec3 p2 = mat4_x_vec3(window->view_matrix, p1);
     if (p2.z == 0.0f)
     {
-        printf("z is zero");
+        printf("z is zero\n");
         return;
     }
 
@@ -73,12 +82,14 @@ void draw_triangles(Window* window, const Triangles triangle, const uint32_t tri
 
 void draw_triangle(Window* window, const Triangle triangle)
 {
-    for (uint32_t i = 0; i < window->viewport_height; ++i)
+    const float viewport_height = window->get_viewport_height();
+    const float viewport_width = window->get_viewport_width();
+    for (uint32_t i = 0; i < viewport_height; ++i)
     {
-        for (uint32_t j = 0; j < window->viewport_width; ++j)
+        for (uint32_t j = 0; j < viewport_width; ++j)
         {
-            const float width_percentage = (float)j / window->viewport_width;
-            const float height_percentage = (float)i / window->viewport_height;
+            const float width_percentage = j / viewport_width;
+            const float height_percentage = i / viewport_height;
             const float normalized_x = 2.0f * width_percentage - 1.0f;
             const float normalized_y = 1.0f - 2.0f * height_percentage;
             const Vec2 device_coordinate = vec2(normalized_x, normalized_y);
@@ -88,7 +99,7 @@ void draw_triangle(Window* window, const Triangle triangle)
 
             if (p0.z * p1.z * p2.z == 0.0f)
             {
-                printf("z is zero");
+                printf("z is zero\n");
                 return;
             }
 
