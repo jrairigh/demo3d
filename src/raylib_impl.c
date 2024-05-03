@@ -69,17 +69,18 @@ void raylib_begin_draw()
 {
     BeginDrawing();
     ClearBackground(BG_COLOR);
+}
 
+void raylib_end_draw()
+{
+    // Drawing overlays last so viewport window doesn't render graphics overtop of it
     if (show_fps)
         draw_info();
     else
         DrawTextEx(font, "Show info 'I' key", Vector2Scale(Vector2One(), 2.0f), font_size, font_spacing, font_color);
 
     draw_controls();
-}
 
-void raylib_end_draw()
-{
     EndDrawing();
 }
 
@@ -105,6 +106,23 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
     DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
     DrawPixel(viewport_space_x,     viewport_space_y + 1, c);
     DrawPixel(viewport_space_x + 1, viewport_space_y + 1, c);
+}
+
+void raylib_draw_line(const Vec2 start, const Vec2 end, const MyColor color)
+{
+    const float sx = start.x;
+    const float sy = start.y;
+    const float ex = end.x;
+    const float ey = end.y;
+    const Color c = (Color){ color.red, color.green, color.blue, color.alpha };
+    const float viewport_half_width = raylib_viewport_width() / 2.0f;
+    const float viewport_half_height = raylib_viewport_height() / 2.0f;
+    const int viewport_space_sx = (int)((sx + 1.0f) * viewport_half_width);
+    const int viewport_space_sy = (int)((1.0f - sy) * viewport_half_height);
+    const int viewport_space_ex = (int)((ex + 1.0f) * viewport_half_width);
+    const int viewport_space_ey = (int)((1.0f - ey) * viewport_half_height);
+
+    DrawLine(viewport_space_sx, viewport_space_sy, viewport_space_ex, viewport_space_ey, c);
 }
 
 void raylib_close_window()

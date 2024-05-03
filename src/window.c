@@ -17,6 +17,7 @@ Window* create_window_impl()
     window->post_render = raylib_end_draw;
     window->on_update = raylib_on_update;
     window->draw_pixel = raylib_draw_pixel;
+    window->draw_line = raylib_draw_line;
     window->close_window = raylib_close_window;
     window->show = raylib_show;
     window->get_viewport_width = raylib_viewport_width;
@@ -70,6 +71,22 @@ void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
 
     const Vec2 device_coordinate = vec2(p2.x / p2.z, p2.y / p2.z);
     window->draw_pixel(device_coordinate, color);
+}
+
+void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor color)
+{
+    Vec3 p0 = mat4_x_vec3(window->view_matrix, start);
+    Vec3 p1 = mat4_x_vec3(window->view_matrix, end);
+
+    if (p0.z == 0.0f || p1.z == 0.0f)
+    {
+        printf("z is zero\n");
+        return;
+    }
+
+    const Vec2 start_position = vec2(p0.x / p0.z, p0.y / p0.z);
+    const Vec2 end_position   = vec2(p1.x / p1.z, p1.y / p1.z);
+    window->draw_line(start_position, end_position, color);
 }
 
 void draw_triangles(Window* window, const Triangles triangle, const uint32_t triangle_count)
