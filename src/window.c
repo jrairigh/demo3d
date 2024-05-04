@@ -5,10 +5,12 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
-float g_fov = 40.0f;
+float g_fov = 90.0f;
 float g_near_z = 1.0f;
 float g_far_z = 100.0f;
+Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
 
 Window* create_window_impl()
 {
@@ -18,11 +20,21 @@ Window* create_window_impl()
     window->on_update = raylib_on_update;
     window->draw_pixel = raylib_draw_pixel;
     window->draw_line = raylib_draw_line;
+    window->draw_overlay_text = raylib_draw_overlay_text;
     window->close_window = raylib_close_window;
     window->show = raylib_show;
     window->get_viewport_width = raylib_viewport_width;
     window->get_viewport_height = raylib_viewport_height;
     return window;
+}
+
+static void clear_z_buffer(Window* window)
+{
+    const uint32_t viewport_width = window->get_viewport_width();
+    const uint32_t viewport_height = window->get_viewport_height();
+
+    // TODO need to reallocate z_buffer if viewport changed
+    memset(window->z_buffer, 0, viewport_width * viewport_height * sizeof(float));
 }
 
 Window* show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
@@ -34,6 +46,9 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->is_open = true;
     window->show(title, screen_width, screen_height);
 
+    const uint32_t viewport_width = window->get_viewport_width();
+    const uint32_t viewport_height = window->get_viewport_height();
+    window->z_buffer = (float*)malloc(viewport_width * viewport_height * sizeof(float));
     return window;
 }
 
@@ -41,10 +56,12 @@ void update(Window* window, const float ts)
 {
     while (window->is_open)
     {
-        const float viewport_width = window->get_viewport_width();
-        const float viewport_height = window->get_viewport_height();
+        const float viewport_width = (float)window->get_viewport_width();
+        const float viewport_height = (float)window->get_viewport_height();
         const float aspect_ratio = viewport_width / viewport_height;
-        window->view_matrix = perspective_matrix(aspect_ratio, g_fov, g_near_z, g_far_z);
+
+        clear_z_buffer(window);
+        window->view_matrix = perspective_mat4(aspect_ratio, g_fov, g_near_z, g_far_z);
         window->on_update(window, ts);
         window->pre_render();
         render(window);
@@ -56,37 +73,60 @@ void close_window(Window** window_ptr)
 {
     Window* w = *window_ptr;
     w->close_window();
+    free(w->z_buffer);
     free(w);
     *window_ptr = NULL;
 }
 
 void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
 {
-    Vec3 p2 = mat4_x_vec3(window->view_matrix, p1);
-    if (p2.z == 0.0f)
+    const Vec4 p2 = mat4_x_vec4(window->view_matrix, vec4(p1.x, p1.y, p1.z, 1.0f));
+    if (p2.w == 0.0f)
     {
-        printf("z is zero\n");
+        printf("w is zero\n");
         return;
     }
 
-    const Vec2 device_coordinate = vec2(p2.x / p2.z, p2.y / p2.z);
-    window->draw_pixel(device_coordinate, color);
+    const Vec4 position = scalar_x_vec4((1.0f / p2.w), p2);
+    const float x = position.x;
+    const float y = position.y;
+    const float z = position.z;
+
+    const bool inside_view = is_within_canonical_view_volume(x, y, z);
+    if (!inside_view)
+        return;
+
+    window->draw_pixel(vec2(x, y), color);
 }
 
 void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor color)
 {
-    Vec3 p0 = mat4_x_vec3(window->view_matrix, start);
-    Vec3 p1 = mat4_x_vec3(window->view_matrix, end);
+    Vec4 start_ = vec4(start.x, start.y, start.z, 1.0f);
+    Vec4 end_ = vec4(end.x, end.y, end.z, 1.0f);
+    Vec4 p0 = mat4_x_vec4(window->view_matrix, start_);
+    Vec4 p1 = mat4_x_vec4(window->view_matrix, end_);
 
-    if (p0.z == 0.0f || p1.z == 0.0f)
+    if (p0.w == 0.0f || p1.w == 0.0f)
     {
-        printf("z is zero\n");
+        printf("w is zero\n");
         return;
     }
 
-    const Vec2 start_position = vec2(p0.x / p0.z, p0.y / p0.z);
-    const Vec2 end_position   = vec2(p1.x / p1.z, p1.y / p1.z);
-    window->draw_line(start_position, end_position, color);
+    const Vec4 start_position = scalar_x_vec4((1.0f / p0.w), p0);
+    const Vec4 end_position   = scalar_x_vec4((1.0f / p1.w), p1);
+    const float sx = start_position.x;
+    const float sy = start_position.y;
+    const float sz = start_position.z;
+    const float ex = end_position.x;
+    const float ey = end_position.y;
+    const float ez = end_position.z;
+
+    // TODO need to handle lines that are partially clipped
+    const bool inside_view = is_within_canonical_view_volume(sx, sy, sz) && is_within_canonical_view_volume(ex, ey, ez);
+    if(!inside_view)
+        return;
+
+    window->draw_line(vec2(sx, sy), vec2(ex, ey), color);
 }
 
 void draw_triangles(Window* window, const Triangles triangle, const uint32_t triangle_count)
@@ -99,14 +139,14 @@ void draw_triangles(Window* window, const Triangles triangle, const uint32_t tri
 
 void draw_triangle(Window* window, const Triangle triangle)
 {
-    const float viewport_height = window->get_viewport_height();
-    const float viewport_width = window->get_viewport_width();
+    const uint32_t viewport_height = window->get_viewport_height();
+    const uint32_t viewport_width = window->get_viewport_width();
     for (uint32_t i = 0; i < viewport_height; ++i)
     {
         for (uint32_t j = 0; j < viewport_width; ++j)
         {
-            const float width_percentage = j / viewport_width;
-            const float height_percentage = i / viewport_height;
+            const float width_percentage = (float)j / (float)viewport_width;
+            const float height_percentage = (float)i / (float)viewport_height;
             const float normalized_x = 2.0f * width_percentage - 1.0f;
             const float normalized_y = 1.0f - 2.0f * height_percentage;
             const Vec2 device_coordinate = vec2(normalized_x, normalized_y);
@@ -123,8 +163,17 @@ void draw_triangle(Window* window, const Triangle triangle)
             const Vec2 p0_ = vec2(p0.x / p0.z, p0.y / p0.z);
             const Vec2 p1_ = vec2(p1.x / p1.z, p1.y / p1.z);
             const Vec2 p2_ = vec2(p2.x / p2.z, p2.y / p2.z);
-            if (is_inside_triangle(device_coordinate, p0_, p1_, p2_))
+            const float z = is_within_triangle(device_coordinate, p0_, p1_, p2_);
+            if (z >= window->z_buffer[i * viewport_width + j])
+            {
+                window->z_buffer[i * viewport_width + j] = z;
                 window->draw_pixel(device_coordinate, triangle.color);
+            }
         }
     }
+}
+
+void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color)
+{
+    window->draw_overlay_text(text, position, color);
 }

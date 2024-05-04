@@ -44,14 +44,14 @@ void raylib_show(const char* title, const uint32_t screen_width, const uint32_t 
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
 }
 
-float raylib_viewport_width()
+uint32_t raylib_viewport_width()
 {
-    return (1.0f - (float)(!collapse_control_window) * control_window_screen_width_percentage) * GetScreenWidth();
+    return (uint32_t)((1.0f - (float)(!collapse_control_window) * control_window_screen_width_percentage) * GetScreenWidth());
 }
 
-float raylib_viewport_height()
+uint32_t raylib_viewport_height()
 {
-    return (float)GetScreenHeight();
+    return (uint32_t)GetScreenHeight();
 }
 
 void raylib_on_update(Window* window, const float ts)
@@ -88,7 +88,7 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
 {
     const float x = normalized_coordinate.x;
     const float y = normalized_coordinate.y;
-    const Color c = (Color){color.red, color.green, color.blue, color.alpha};
+    const Color c = {color.red, color.green, color.blue, color.alpha};
     const float viewport_half_width = raylib_viewport_width() / 2.0f;
     const float viewport_half_height = raylib_viewport_height() / 2.0f;
     const int viewport_space_x = (int)((x + 1.0f) * viewport_half_width);
@@ -114,15 +114,22 @@ void raylib_draw_line(const Vec2 start, const Vec2 end, const MyColor color)
     const float sy = start.y;
     const float ex = end.x;
     const float ey = end.y;
-    const Color c = (Color){ color.red, color.green, color.blue, color.alpha };
-    const float viewport_half_width = raylib_viewport_width() / 2.0f;
-    const float viewport_half_height = raylib_viewport_height() / 2.0f;
+    const Color c = { color.red, color.green, color.blue, color.alpha };
+    const float viewport_half_width = raylib_viewport_width() * 0.5f;
+    const float viewport_half_height = raylib_viewport_height() * 0.5f;
     const int viewport_space_sx = (int)((sx + 1.0f) * viewport_half_width);
     const int viewport_space_sy = (int)((1.0f - sy) * viewport_half_height);
     const int viewport_space_ex = (int)((ex + 1.0f) * viewport_half_width);
     const int viewport_space_ey = (int)((1.0f - ey) * viewport_half_height);
 
     DrawLine(viewport_space_sx, viewport_space_sy, viewport_space_ex, viewport_space_ey, c);
+}
+
+void raylib_draw_overlay_text(const char* text, const Vec2 position, const MyColor color)
+{
+    const Color c = { color.red, color.green, color.blue, color.alpha };
+    const Vector2 p = { position.x, position.y };
+    DrawTextEx(font, text, p, font_size, font_spacing, c);
 }
 
 void raylib_close_window()
@@ -160,6 +167,21 @@ static void draw_controls()
     const float far_z_slider_x = 639.0f;
     const float far_z_slider_y = 93.0f;
 
+    const float x_slider_height = 22.0f;
+    const float x_slider_width = 113.0f;
+    const float x_slider_x = 639.0f;
+    const float x_slider_y = 120.0f;
+
+    const float y_slider_height = 22.0f;
+    const float y_slider_width = 113.0f;
+    const float y_slider_x = 639.0f;
+    const float y_slider_y = 147.0f;
+
+    const float z_slider_height = 22.0f;
+    const float z_slider_width = 113.0f;
+    const float z_slider_x = 639.0f;
+    const float z_slider_y = 174.0f;
+
     collapse_control_window = GuiWindowBox(rect(control_window_x, control_window_y, control_window_width, control_window_height), "Controls");
 
     // GUI Design controls for positioning and sizing components
@@ -169,16 +191,20 @@ static void draw_controls()
     //GuiSlider(rect(30, 540, 200, 30), "height", TextFormat("%2.2f", height), &height, 0.0f, (float)GetScreenWidth());
 
     GuiSlider(rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), "FOV", TextFormat("%2.0f", g_fov), &g_fov, 1.0f, 100.0f);
-    GuiSlider(rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), "Near Z", TextFormat("%2.1f", g_near_z), &g_near_z, 1, 100.0f);
+    GuiSlider(rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), "Near Z", TextFormat("%2.1f", g_near_z), &g_near_z, 1, 99.9f);
     GuiSlider(rect(far_z_slider_x, far_z_slider_y, far_z_slider_width, far_z_slider_height), "Far Z", TextFormat("%2.1f", g_far_z), &g_far_z, 100.0f, 999.9f);
+
+    GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
+    GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
+    GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
 }
 
 static void draw_info()
 {
-    const float width = raylib_viewport_width();
-    const float height = raylib_viewport_height();
+    const uint32_t width = raylib_viewport_width();
+    const uint32_t height = raylib_viewport_height();
     DrawFPS(2, GetScreenHeight() - 20);
 
     Vector2 position = {2.0f, 2.0f};
-    DrawTextEx(font, TextFormat("Viewport <%2.0fpx, %2.0fpx>", width, height), position, font_size, font_spacing, font_color);
+    DrawTextEx(font, TextFormat("Viewport <%dpx, %dpx>", width, height), position, font_size, font_spacing, font_color);
 }

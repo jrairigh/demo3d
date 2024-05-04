@@ -10,6 +10,11 @@ Vec3 vec3(const float x, const float y, const float z)
     return (Vec3) { x, y, z };
 }
 
+Vec4 vec4(const float x, const float y, const float z, const float w)
+{
+    return (Vec4) { x, y, z, w };
+}
+
 MyColor color(const uint8_t red, const uint8_t green, const uint8_t blue, const uint8_t alpha)
 {
     return (MyColor) { red, green, blue, alpha };
@@ -25,7 +30,7 @@ Triangle triangle(const Vec3 p0, const Vec3 p1, const Vec3 p2, const MyColor col
     return t;
 }
 
-Mat4 matrix4(
+Mat4 mat4(
     const float v00, const float v01, const float v02, const float v03,
     const float v10, const float v11, const float v12, const float v13,
     const float v20, const float v21, const float v22, const float v23,

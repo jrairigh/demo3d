@@ -1,10 +1,14 @@
 #include "mymath.h"
 
+#include <assert.h>
 #include <math.h>
 
-const float pi = 3.14159265f;
+#define PI 3.14159265f
+
+const float pi = PI;
 const int true = 1;
 const int false = 0;
+static const float radians_to_degrees_ratio = PI / 180.0f;
 
 float vec2_determinant(const Vec2 p0, const Vec2 p1)
 {
@@ -51,6 +55,29 @@ bool is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p
     return a >= 0 && b >= 0 && c >= 0;
 }
 
+float is_within_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2)
+{
+    return -1.0f;
+}
+
+bool is_within_canonical_view_volume(const float x, const float y, const float z)
+{
+    return (-1.0f <= x && x <= 1.0f) &&
+        (-1.0f <= y && y <= 1.0f) &&
+        (0.0f <= z && z <= 1.0f);
+}
+
+
+Vec3 scalar_x_vec3(const float s, const Vec3 a)
+{
+    return vec3(a.x * s, a.y * s, a.z * s);
+}
+
+Vec4 scalar_x_vec4(const float s, const Vec4 a)
+{
+    return vec4(a.x * s, a.y * s, a.z * s, a.w * s);
+}
+
 Vec3 mat4_x_vec3(const Mat4 m, const Vec3 a)
 {
     return vec3(
@@ -60,24 +87,63 @@ Vec3 mat4_x_vec3(const Mat4 m, const Vec3 a)
     );
 }
 
-Mat4 perspective_matrix(const float aspect_ratio, const float fov_degrees, const float near_plane, const float far_plane)
+Vec4 mat4_x_vec4(const Mat4 m, const Vec4 a)
 {
-    float fov_radians = fov_degrees * (pi / 180.0f);
-    float t = tanf(fov_radians / 2.0f);
-    float x = 1.0f / (aspect_ratio * t);
-    float y = 1.0f / t;
-    float z0 = far_plane / (far_plane - near_plane);
-    float z1 = (-far_plane * near_plane) / (far_plane - near_plane);
-    return matrix4(
+    return vec4(
+        (m.v00 * a.x) + (m.v01 * a.y) + (m.v02 * a.z) + (m.v03 * a.w),
+        (m.v10 * a.x) + (m.v11 * a.y) + (m.v12 * a.z) + (m.v13 * a.w),
+        (m.v20 * a.x) + (m.v21 * a.y) + (m.v22 * a.z) + (m.v23 * a.w),
+        (m.v30 * a.x) + (m.v31 * a.y) + (m.v32 * a.z) + (m.v33 * a.w)
+    );
+}
+
+Mat4 perspective_mat4(const float aspect_ratio, const float fov_degrees, const float near_plane, const float far_plane)
+{
+    assert(far_plane > near_plane);
+    assert(0.0f < fov_degrees && fov_degrees < 180.0f);
+
+    const float z_plane_diff = far_plane - near_plane;
+    const float fov_radians = fov_degrees * radians_to_degrees_ratio;
+    const float t = tanf(fov_radians * 0.5f);
+    const float x = 1.0f / (aspect_ratio * t);
+    const float y = 1.0f / t;
+    const float z0 = far_plane / z_plane_diff;
+    const float z1 = (-far_plane * near_plane) / z_plane_diff;
+    return mat4(
         x, 0.0f, 0.0f, 0.0f, 
         0.0f, y, 0.0f, 0.0f,
         0.0f, 0.0f, z0, z1,
         0.0f, 0.0f, 1.0f, 0.0f);
 }
 
+Mat4 orthographic_mat4(
+    const float left_plane,
+    const float right_plane,
+    const float bottom_plane,
+    const float top_plane,
+    const float near_plane,
+    const float far_plane)
+{
+    assert(right_plane > left_plane);
+    assert(top_plane > bottom_plane);
+    assert(far_plane > near_plane);
+
+    const float sx = 2.0f / (right_plane - left_plane);
+    const float sy = 2.0f / (top_plane - bottom_plane);
+    const float sz = 1.0f / (far_plane - near_plane);
+    const float cx = (left_plane + right_plane) * 0.5f * sx;
+    const float cy = (bottom_plane + top_plane) * 0.5f * sy;
+    const float cz = near_plane * sz;
+    return mat4(
+          sx, 0.0f, 0.0f,  -cx,
+        0.0f,   sy, 0.0f,  -cy,
+        0.0f, 0.0f,   sz,  -cz,
+        0.0f, 0.0f, 0.0f, 1.0f);
+}
+
 Mat4 identity_mat4()
 {
-    return matrix4(
+    return mat4(
         1.0f, 0.0f, 0.0f, 0.0f, 
         0.0f, 1.0f, 0.0f, 0.0f, 
         0.0f, 0.0f, 1.0f, 0.0f, 
@@ -113,7 +179,7 @@ Mat4 mat4_x_mat4(const Mat4 m, const Mat4 n)
     float v32 = (m.v30 * n.v02) + (m.v31 * n.v12) + (m.v32 * n.v22) + (m.v33 * n.v32);
     float v33 = (m.v30 * n.v03) + (m.v31 * n.v13) + (m.v32 * n.v23) + (m.v33 * n.v33);
 
-    return matrix4(
+    return mat4(
         v00, v01, v02, v03,
         v10, v11, v12, v13,
         v20, v21, v22, v23,
