@@ -33,7 +33,7 @@ typedef struct Window
 
 Window* show(const char* title, const uint32_t viewport_width, const uint32_t viewport_height);
 void update(Window* window);
-void render(Window* window);
+void render(Window* window, const float elapsed_time);
 void close_window(Window** window);
 
 void draw_pixel(Window* window, const Vec3 p1, const MyColor color);
@@ -41,3 +41,4 @@ void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor c
 void draw_triangle(Window* window, const Triangle triangle);
 void draw_triangles(Window* window, const Triangles triangles, const uint32_t triangle_count);
 void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color);
+void draw_wireframe_box(Window* window, const float width, const float height, const float depth, const float angle, const Vec3 position, const MyColor color);

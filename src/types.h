@@ -27,6 +27,19 @@ typedef struct Vec4
     float x, y, z, w;
 } Vec4;
 
+typedef struct Mat3
+{
+    /*    0  1  2 
+      0 | v  v  v |
+      1 | v  v  v |
+      2 | v  v  v |
+    */
+    float v00, v01, v02,
+        v10, v11, v12,
+        v20, v21, v22;
+} Mat3;
+
+
 typedef struct Mat4
 {
     /*    0  1  2  3
@@ -55,6 +68,10 @@ MyColor color(const uint8_t red, const uint8_t green, const uint8_t blue, const 
 Vec2 vec2(const float x, const float y);
 Vec3 vec3(const float x, const float y, const float z);
 Vec4 vec4(const float x, const float y, const float z, const float w);
+Mat3 mat3(
+    const float v00, const float v01, const float v02,
+    const float v10, const float v11, const float v12,
+    const float v20, const float v21, const float v22);
 Mat4 mat4(
     const float v00, const float v01, const float v02, const float v03, 
     const float v10, const float v11, const float v12, const float v13, 

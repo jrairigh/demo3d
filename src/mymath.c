@@ -8,7 +8,7 @@
 const float pi = PI;
 const int true = 1;
 const int false = 0;
-static const float radians_to_degrees_ratio = PI / 180.0f;
+static const float degrees_to_radians_ratio = PI / 180.0f;
 
 float vec2_determinant(const Vec2 p0, const Vec2 p1)
 {
@@ -28,6 +28,11 @@ Vec2 vec2_minus_vec2(const Vec2 a, const Vec2 b)
 Vec3 vec3_minus_vec3(const Vec3 a, const Vec3 b)
 {
     return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+Vec3 vec3_add_vec3(const Vec3 a, const Vec3 b)
+{
+    return vec3(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
 float lerpf(const float a, const float b, const float t)
@@ -106,6 +111,15 @@ Vec4 scalar_x_vec4(const float s, const Vec4 a)
     return vec4(a.x * s, a.y * s, a.z * s, a.w * s);
 }
 
+Vec3 mat3_x_vec3(const Mat3 m, const Vec3 a)
+{
+    return vec3(
+        m.v00 * a.x + m.v01 * a.y + m.v02 * a.z,
+        m.v10 * a.x + m.v11 * a.y + m.v12 * a.z,
+        m.v20 * a.x + m.v21 * a.y + m.v22 * a.z
+    );
+}
+
 Vec3 mat4_x_vec3(const Mat4 m, const Vec3 a)
 {
     return vec3(
@@ -131,7 +145,7 @@ Mat4 perspective_mat4(const float aspect_ratio, const float fov_degrees, const f
     assert(0.0f < fov_degrees && fov_degrees < 180.0f);
 
     const float z_plane_diff = far_plane - near_plane;
-    const float fov_radians = fov_degrees * radians_to_degrees_ratio;
+    const float fov_radians = fov_degrees * degrees_to_radians_ratio;
     const float t = tanf(fov_radians * 0.5f);
     const float x = 1.0f / (aspect_ratio * t);
     const float y = 1.0f / t;
@@ -212,5 +226,15 @@ Mat4 mat4_x_mat4(const Mat4 m, const Mat4 n)
         v10, v11, v12, v13,
         v20, v21, v22, v23,
         v30, v31, v32, v33
+    );
+}
+
+Mat3 rotate_y_axis(const float angle_degrees)
+{
+    const float radians = angle_degrees * degrees_to_radians_ratio;
+    return mat3(
+        sinf(radians), 0.0f, -cosf(radians),
+        0.0f,          1.0f, 0.0f,
+        cosf(radians), 0.0f, sinf(radians)
     );
 }

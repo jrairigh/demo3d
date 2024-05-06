@@ -33,36 +33,12 @@ void render_overlapping_triangles(Window* window)
     draw_triangles(window, t, _countof(t));
 }
 
-void render_cube(Window* window)
+void render_cube(Window* window, const float ts)
 {
-    const float k = g_vec3.x / 10.0f;
-    const float s = g_vec3.y / 10.0f;
-    const float n = g_vec3.z / 10.0f;
-
-    // Draw a cube
-    // front face
-    draw_line(window, vec3(-k, k, n), vec3(k, k, n), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, k, n), vec3(k, -k, n), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, -k, n), vec3(-k, -k, n), color(255, 255, 0, 255));
-    draw_line(window, vec3(-k, -k, n), vec3(-k, k, n), color(255, 255, 0, 255));
-    draw_line(window, vec3(-k, k, n), vec3(k, -k, n), color(255, 255, 0, 255));
-    // back face
-    draw_line(window, vec3(-k, k, n + s), vec3(k, k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, k, n + s), vec3(k, -k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, -k, n + s), vec3(-k, -k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(-k, -k, n + s), vec3(-k, k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(-k, -k, n + s), vec3(k, k, n + s), color(255, 255, 0, 255));
-    // top face
-    draw_line(window, vec3(-k, k, n), vec3(-k, k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, k, n), vec3(k, k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, k, n), vec3(-k, k, n + s), color(255, 255, 0, 255));
-    // bottom face
-    draw_line(window, vec3(-k, -k, n), vec3(-k, -k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, -k, n), vec3(k, -k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(-k, -k, n), vec3(k, -k, n + s), color(255, 255, 0, 255));
-    // side faces
-    draw_line(window, vec3(-k, k, n), vec3(-k, -k, n + s), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, -k, n), vec3(k, k, n + s), color(255, 255, 0, 255));
+    const float angle = lerpf(-180.0f, 180.0f, (500.0f + g_vec3.x) / 1000.0f);
+    const float y = lerpf(-1000.0f, 1000.0f, (500.0f + g_vec3.y) / 1000.0f);
+    const float z = lerpf(500.0f, 3000.0f, (500.0f + g_vec3.z) / 1000.0f);
+    draw_wireframe_box(window, 200.0f, 800.0f, 400.0f, angle, vec3(0.0f, y, z), color(255, 255, 0, 255));
 }
 
 void render_pixels_to_vanishing_point(Window* window)
@@ -96,11 +72,11 @@ void render_lines_to_vanishing_point(Window* window)
     draw_line(window, vec3(k, -k,  s), vec3(k, -k,  s * n), color(255, 255, 0, 255));
 }
 
-void render(Window* window)
+void render(Window* window, const float elapsed_time)
 {
     //render_4_triangles(window);
-    render_overlapping_triangles(window);
-    //render_cube(window);
+    //render_overlapping_triangles(window);
+    render_cube(window, elapsed_time);
     //render_pixels_to_vanishing_point(window);
     //render_lines_to_vanishing_point(window);
 

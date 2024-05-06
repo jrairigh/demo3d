@@ -30,6 +30,18 @@ Triangle triangle(const Vec3 p0, const Vec3 p1, const Vec3 p2, const MyColor col
     return t;
 }
 
+Mat3 mat3(
+    const float v00, const float v01, const float v02,
+    const float v10, const float v11, const float v12,
+    const float v20, const float v21, const float v22)
+{
+    return (Mat3) {
+        v00, v01, v02,
+        v10, v11, v12,
+        v20, v21, v22
+    };
+}
+
 Mat4 mat4(
     const float v00, const float v01, const float v02, const float v03,
     const float v10, const float v11, const float v12, const float v13,

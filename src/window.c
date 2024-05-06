@@ -9,7 +9,7 @@
 
 float g_fov = 90.0f;
 float g_near_z = 1.0f;
-float g_far_z = 100.0f;
+float g_far_z = 999.9f;
 bool g_orthographic_mode = 0;
 Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
 
@@ -60,7 +60,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 
 void update(Window* window)
 {
-    const float ts = 0.16667f;
+    const float elapsed_time = 0.16667f;
     while (window->is_open)
     {
         const float viewport_width = (float)window->get_viewport_width();
@@ -74,9 +74,9 @@ void update(Window* window)
             ? orthographic_mat4(-x, x, -y, y, -z, z) 
             : perspective_mat4(aspect_ratio, g_fov, g_near_z, g_far_z);
 
-        window->on_update(window, ts);
+        window->on_update(window, elapsed_time);
         window->pre_render();
-        render(window);
+        render(window, elapsed_time);
         //window->render();
         window->post_render();
     }
@@ -205,4 +205,60 @@ void draw_triangle(Window* window, const Triangle triangle)
 void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color)
 {
     window->draw_overlay_text(text, position, color);
+}
+
+void draw_wireframe_box(Window* window, const float width, const float height, const float depth, const float angle, const Vec3 position, const MyColor color)
+{
+    const float x = width * 0.5f;
+    const float y = height * 0.5f;
+    const float z = depth * 0.5f;
+
+    // box corners
+    const Vec3 a = vec3(-x, y, -z);
+    const Vec3 b = vec3(x, y, -z);
+    const Vec3 c = vec3(x, -y, -z);
+    const Vec3 d = vec3(-x, -y, -z);
+    const Vec3 e = vec3(-x, y, z);
+    const Vec3 f = vec3(x, y, z);
+    const Vec3 g = vec3(x, -y, z);
+    const Vec3 h = vec3(-x, -y, z);
+
+    // rotate corners
+    const Mat3 rotate_y_matrix = rotate_y_axis(angle);
+    const Vec3 a_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, a), position);
+    const Vec3 b_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, b), position);
+    const Vec3 c_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, c), position);
+    const Vec3 d_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, d), position);
+    const Vec3 e_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, e), position);
+    const Vec3 f_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, f), position);
+    const Vec3 g_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, g), position);
+    const Vec3 h_ = vec3_add_vec3(mat3_x_vec3(rotate_y_matrix, h), position);
+
+    // front face
+    draw_line(window, a_, b_, color);
+    draw_line(window, b_, c_, color);
+    draw_line(window, c_, d_, color);
+    draw_line(window, d_, a_, color);
+    draw_line(window, a_, c_, color);
+
+    // back face
+    draw_line(window, e_, f_, color);
+    draw_line(window, f_, g_, color);
+    draw_line(window, g_, h_, color);
+    draw_line(window, h_, e_, color);
+    draw_line(window, h_, f_, color);
+
+    // top face
+    draw_line(window, a_, e_, color);
+    draw_line(window, b_, f_, color);
+    draw_line(window, b_, e_, color);
+
+    // bottom face
+    draw_line(window, d_, h_, color);
+    draw_line(window, c_, g_, color);
+    draw_line(window, d_, g_, color);
+
+    // side faces
+    draw_line(window, a_, h_, color);
+    draw_line(window, c_, f_, color);
 }

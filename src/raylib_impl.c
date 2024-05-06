@@ -227,7 +227,7 @@ static void draw_controls()
 
     GuiSlider(rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), "FOV", TextFormat("%2.0f", g_fov), &g_fov, 1.0f, 100.0f);
     GuiSlider(rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), "Near Z", TextFormat("%2.1f", g_near_z), &g_near_z, 1, 99.9f);
-    GuiSlider(rect(far_z_slider_x, far_z_slider_y, far_z_slider_width, far_z_slider_height), "Far Z", TextFormat("%2.1f", g_far_z), &g_far_z, 100.0f, 999.9f);
+    GuiSlider(rect(far_z_slider_x, far_z_slider_y, far_z_slider_width, far_z_slider_height), "Far Z", TextFormat("%2.1f", g_far_z), &g_far_z, 100.0f, 10000.0f);
 
     GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
     GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
