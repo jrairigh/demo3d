@@ -10,12 +10,14 @@
 float g_fov = 90.0f;
 float g_near_z = 1.0f;
 float g_far_z = 100.0f;
+bool g_orthographic_mode = 0;
 Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
 
 Window* create_window_impl()
 {
     Window* window = (Window*)malloc(sizeof(Window));
     window->pre_render = raylib_begin_draw;
+    window->render = raylib_render;
     window->post_render = raylib_end_draw;
     window->on_update = raylib_on_update;
     window->draw_pixel = raylib_draw_pixel;
@@ -34,7 +36,10 @@ static void clear_z_buffer(Window* window)
     const uint32_t viewport_height = window->get_viewport_height();
 
     // TODO need to reallocate z_buffer if viewport changed
-    memset(window->z_buffer, 0, viewport_width * viewport_height * sizeof(float));
+    // The canonical view volume z values are between 0 and 1, so choosing an impossible value than will always be overriden by something in view.
+    const int n = viewport_width * viewport_height;
+    for (int i = 0; i < n; ++i)
+        window->z_buffer[i] = 99.0f;
 }
 
 Window* show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
@@ -49,22 +54,30 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
     window->z_buffer = (float*)malloc(viewport_width * viewport_height * sizeof(float));
+    clear_z_buffer(window);
     return window;
 }
 
-void update(Window* window, const float ts)
+void update(Window* window)
 {
+    const float ts = 0.16667f;
     while (window->is_open)
     {
         const float viewport_width = (float)window->get_viewport_width();
         const float viewport_height = (float)window->get_viewport_height();
         const float aspect_ratio = viewport_width / viewport_height;
+        const float x = fabsf(g_vec3.x);
+        const float y = fabsf(g_vec3.y);
+        const float z = fabsf(g_vec3.z);
 
-        clear_z_buffer(window);
-        window->view_matrix = perspective_mat4(aspect_ratio, g_fov, g_near_z, g_far_z);
+        window->view_matrix = g_orthographic_mode 
+            ? orthographic_mat4(-x, x, -y, y, -z, z) 
+            : perspective_mat4(aspect_ratio, g_fov, g_near_z, g_far_z);
+
         window->on_update(window, ts);
         window->pre_render();
         render(window);
+        //window->render();
         window->post_render();
     }
 }
@@ -145,30 +158,46 @@ void draw_triangle(Window* window, const Triangle triangle)
     {
         for (uint32_t j = 0; j < viewport_width; ++j)
         {
+            // convert from screen to normalized device coordinates
             const float width_percentage = (float)j / (float)viewport_width;
             const float height_percentage = (float)i / (float)viewport_height;
             const float normalized_x = 2.0f * width_percentage - 1.0f;
             const float normalized_y = 1.0f - 2.0f * height_percentage;
             const Vec2 device_coordinate = vec2(normalized_x, normalized_y);
-            const Vec3 p0 = mat4_x_vec3(window->view_matrix, triangle.p0);
-            const Vec3 p1 = mat4_x_vec3(window->view_matrix, triangle.p1);
-            const Vec3 p2 = mat4_x_vec3(window->view_matrix, triangle.p2);
 
-            if (p0.z * p1.z * p2.z == 0.0f)
+            // transform by view matrix
+            const Vec4 p0 = mat4_x_vec4(window->view_matrix, vec3_to_vec4(triangle.p0, 1.0f));
+            const Vec4 p1 = mat4_x_vec4(window->view_matrix, vec3_to_vec4(triangle.p1, 1.0f));
+            const Vec4 p2 = mat4_x_vec4(window->view_matrix, vec3_to_vec4(triangle.p2, 1.0f));
+
+            if (p0.w * p1.w * p2.w == 0.0f)
             {
-                printf("z is zero\n");
-                return;
+                printf("w is zero\n");
+                continue;
             }
 
-            const Vec2 p0_ = vec2(p0.x / p0.z, p0.y / p0.z);
-            const Vec2 p1_ = vec2(p1.x / p1.z, p1.y / p1.z);
-            const Vec2 p2_ = vec2(p2.x / p2.z, p2.y / p2.z);
-            const float z = is_within_triangle(device_coordinate, p0_, p1_, p2_);
-            if (z >= window->z_buffer[i * viewport_width + j])
-            {
-                window->z_buffer[i * viewport_width + j] = z;
-                window->draw_pixel(device_coordinate, triangle.color);
-            }
+            // scale by w
+            const Vec4 p0_ = scalar_x_vec4((1.0f / p0.w), p0);
+            const Vec4 p1_ = scalar_x_vec4((1.0f / p1.w), p1);
+            const Vec4 p2_ = scalar_x_vec4((1.0f / p2.w), p2);
+
+            // cull
+            const bool inside_view = is_within_canonical_view_volume(p0_.x, p0_.y, p0_.z) &&
+                is_within_canonical_view_volume(p1_.x, p1_.y, p1_.z) &&
+                is_within_canonical_view_volume(p2_.x, p2_.y, p2_.z);
+            if (!inside_view)
+                continue;
+
+            // test within triangle and not occluded by something in front
+            const float z = is_within_triangle(device_coordinate, 
+                vec3(p0_.x, p0_.y, p0_.z), 
+                vec3(p1_.x, p1_.y, p1_.z), 
+                vec3(p2_.x, p2_.y, p2_.z));
+            if (z < 0.0f || z > window->z_buffer[i * viewport_width + j])
+                continue;
+
+            window->z_buffer[i * viewport_width + j] = z;
+            window->draw_pixel(device_coordinate, triangle.color);
         }
     }
 }

@@ -7,7 +7,10 @@
 #include "raygui.h"
 #include "styles/dark/style_dark.h"
 
+#include <assert.h>
+
 static Font font = { 0 };
+static Image image_buffer;
 static const float font_size = 18.0f;
 static const float font_spacing = 5.0f;
 static const Color font_color = {0, 228, 48, 255};
@@ -15,6 +18,7 @@ static bool show_fps = false;
 static bool collapse_control_window = false;
 
 #define BG_COLOR CLITERAL(Color) { 50, 49, 64, 255 }
+#define TRANSPARENT CLITERAL(Color) {0, 0, 0, 0}
 
 // GUI design variables for positioning and sizing components
 //float x = 0.0f, y = 0.0f, width = 50.0f, height = 20.0f;
@@ -30,6 +34,16 @@ static Rectangle rect(const float x, const float y, const float width, const flo
 static void draw_info();
 static void draw_controls();
 
+uint32_t raylib_viewport_width()
+{
+    return (uint32_t)((1.0f - (float)(!collapse_control_window) * control_window_screen_width_percentage) * GetScreenWidth());
+}
+
+uint32_t raylib_viewport_height()
+{
+    return (uint32_t)GetScreenHeight();
+}
+
 void raylib_show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
 {
     InitWindow(screen_width, screen_height, title);
@@ -42,16 +56,8 @@ void raylib_show(const char* title, const uint32_t screen_width, const uint32_t 
 
     control_window_height = 1.0f * GetScreenHeight();
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
-}
 
-uint32_t raylib_viewport_width()
-{
-    return (uint32_t)((1.0f - (float)(!collapse_control_window) * control_window_screen_width_percentage) * GetScreenWidth());
-}
-
-uint32_t raylib_viewport_height()
-{
-    return (uint32_t)GetScreenHeight();
+    image_buffer = GenImageWhiteNoise((int)raylib_viewport_width(), (int)raylib_viewport_height(), 1.0f);
 }
 
 void raylib_on_update(Window* window, const float ts)
@@ -84,6 +90,13 @@ void raylib_end_draw()
     EndDrawing();
 }
 
+void raylib_render()
+{
+    Texture2D texture = LoadTextureFromImage(image_buffer);
+    DrawTexture(texture, 0, 0, TRANSPARENT);
+    UnloadTexture(texture);
+}
+
 void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
 {
     const float x = normalized_coordinate.x;
@@ -96,16 +109,28 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
 
     // drawing extra pixels to fill in gaps
     DrawPixel(viewport_space_x - 1, viewport_space_y - 1, c);
-    DrawPixel(viewport_space_x,     viewport_space_y - 1, c);
+    DrawPixel(viewport_space_x, viewport_space_y - 1, c);
     DrawPixel(viewport_space_x + 1, viewport_space_y - 1, c);
 
     DrawPixel(viewport_space_x - 1, viewport_space_y, c);
-    DrawPixel(viewport_space_x,     viewport_space_y, c);
+    DrawPixel(viewport_space_x, viewport_space_y, c);
     DrawPixel(viewport_space_x + 1, viewport_space_y, c);
 
     DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
-    DrawPixel(viewport_space_x,     viewport_space_y + 1, c);
+    DrawPixel(viewport_space_x, viewport_space_y + 1, c);
     DrawPixel(viewport_space_x + 1, viewport_space_y + 1, c);
+
+    //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y - 1, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y - 1, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y - 1, c);
+    //
+    //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y, c);
+    //
+    //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y + 1, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y + 1, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y + 1, c);
 }
 
 void raylib_draw_line(const Vec2 start, const Vec2 end, const MyColor color)
@@ -182,6 +207,11 @@ static void draw_controls()
     const float z_slider_x = 639.0f;
     const float z_slider_y = 174.0f;
 
+    const float orthographic_mode_checkbox_height = 20.0f;
+    const float orthographic_mode_checkbox_width = 20.0f;
+    const float orthographic_mode_checkbox_x = 639.0f;
+    const float orthographic_mode_checkbox_y = 201.0f;
+
     collapse_control_window = GuiWindowBox(rect(control_window_x, control_window_y, control_window_width, control_window_height), "Controls");
 
     // GUI Design controls for positioning and sizing components
@@ -189,6 +219,11 @@ static void draw_controls()
     //GuiSlider(rect(30, 460, 200, 30), "y", TextFormat("%2.2f", y), &y, 0.0f, (float)GetScreenWidth());
     //GuiSlider(rect(30, 500, 200, 30), "width", TextFormat("%2.2f", width), &width, 0.0f, (float)GetScreenWidth());
     //GuiSlider(rect(30, 540, 200, 30), "height", TextFormat("%2.2f", height), &height, 0.0f, (float)GetScreenWidth());
+
+    GuiCheckBox(
+        rect(orthographic_mode_checkbox_x, orthographic_mode_checkbox_y, orthographic_mode_checkbox_width, orthographic_mode_checkbox_height),
+        "Orthographic",
+        &g_orthographic_mode);
 
     GuiSlider(rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), "FOV", TextFormat("%2.0f", g_fov), &g_fov, 1.0f, 100.0f);
     GuiSlider(rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), "Near Z", TextFormat("%2.1f", g_near_z), &g_near_z, 1, 99.9f);

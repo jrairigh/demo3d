@@ -6,7 +6,34 @@
 const int screen_width = 800;
 const int screen_height = 600;
 
-void draw_cube(Window* window)
+void render_4_triangles(Window* window)
+{
+    Triangle t[4] = {
+        triangle(vec3(-0.2f, 0.2f, 2.0f), vec3(0.2f, 0.2f,  2.0f), vec3(0.0f, 7.0f, 50.0f), color(255,0,0,255)),
+        triangle(vec3(-0.2f, 0.2f, 2.0f), vec3(0.0f, 7.0f, 50.0f), vec3(-0.2f, -0.2f,  2.0f),  color(0,255,0,255)),
+        triangle(vec3(0.2f, 0.2f,  2.0f), vec3(0.2f, -0.2f,  2.0f), vec3(0.0f, 7.0f, 50.0f), color(0,0,255,255)),
+        triangle(vec3(-0.2f, -0.2f,  2.0f), vec3(0.0f, 7.0f, 50.0f), vec3(0.2f, -0.2f, 2.0f),  color(255,0,255,255)),
+    };
+
+    draw_triangles(window, t, _countof(t));
+}
+
+void render_overlapping_triangles(Window* window)
+{
+    //const float k = fabsf(g_vec3.x) / 500.0f;
+    //const float s = g_vec3.y * 0.1f;
+    //const float n = g_vec3.z * 0.1f;
+    Triangle t[4] = {
+        triangle(vec3(-50.0f, 50.0f, 100.0f), vec3(0.0f, 50.0f, 100.0f), vec3(-50.0f, -50.0f, 100.0f), color(255, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 150.0f), vec3(0.0f, 50.0f, 150.0f), vec3(-50.0f, -50.0f, 150.0f), color(190, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 250.0f), vec3(0.0f, 50.0f, 250.0f), vec3(-50.0f, -50.0f, 250.0f), color(150, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 400.0f), vec3(0.0f, 50.0f, 400.0f), vec3(-50.0f, -50.0f, 400.0f), color(100, 0, 0, 255)),
+    };
+
+    draw_triangles(window, t, _countof(t));
+}
+
+void render_cube(Window* window)
 {
     const float k = g_vec3.x / 10.0f;
     const float s = g_vec3.y / 10.0f;
@@ -38,49 +65,48 @@ void draw_cube(Window* window)
     draw_line(window, vec3(k, -k, n), vec3(k, k, n + s), color(255, 255, 0, 255));
 }
 
+void render_pixels_to_vanishing_point(Window* window)
+{
+    const float k = g_vec3.x / 10.0f;
+    const float s = g_vec3.y / 10.0f;
+    const float n = g_vec3.z / 10.0f;
+    for (int i = 1; i < n; ++i)
+    {
+        draw_pixel(window, vec3(-k,  k, s * i), color(255, 0, 0,   255));
+        draw_pixel(window, vec3(k,   k, s * i), color(0, 255, 0,   255));
+        draw_pixel(window, vec3(k,  -k, s * i), color(0,   0, 255, 255));
+        draw_pixel(window, vec3(-k, -k, s * i), color(255, 0, 255, 255));
+    }
+}
+
+void render_lines_to_vanishing_point(Window* window)
+{
+    const float k = g_vec3.x / 10.0f;
+    const float s = g_vec3.y / 10.0f;
+    const float n = g_vec3.z / 10.0f;
+    for (int i = 1; i < n; ++i)
+    {
+        draw_line(window, vec3(-k, k,  s * i), vec3(k, k,   s * i), color(255, 0, 0, 255));
+        draw_line(window, vec3(k, k,   s * i), vec3(k, -k,  s * i), color(0, 255, 0, 255));
+        draw_line(window, vec3(k, -k,  s * i), vec3(-k, -k, s * i), color(0, 0, 255, 255));
+        draw_line(window, vec3(-k, -k, s * i), vec3(-k, k,  s * i), color(255, 0, 255, 255));
+    }
+    
+    draw_line(window, vec3(-k, -k, s), vec3(-k, -k, s * n), color(255, 255, 0, 255));
+    draw_line(window, vec3(k, -k,  s), vec3(k, -k,  s * n), color(255, 255, 0, 255));
+}
+
 void render(Window* window)
 {
-    // Draw 4 triangles
-    //Triangle t[4] = {
-    //    triangle(vec3(-0.2f, 0.2f, 2.0f), vec3(0.2f, 0.2f,  2.0f), vec3(0.0f, 7.0f, 50.0f), color(255,0,0,255)),
-    //    triangle(vec3(-0.2f, 0.2f, 2.0f), vec3(0.0f, 7.0f, 50.0f), vec3(-0.2f, -0.2f,  2.0f),  color(0,255,0,255)),
-    //    triangle(vec3(0.2f, 0.2f,  2.0f), vec3(0.2f, -0.2f,  2.0f), vec3(0.0f, 7.0f, 50.0f), color(0,0,255,255)),
-    //    triangle(vec3(-0.2f, -0.2f,  2.0f), vec3(0.0f, 7.0f, 50.0f), vec3(0.2f, -0.2f, 2.0f),  color(255,0,255,255)),
-    //};
-
-    // Green triangle should occlude red partialy
-    //Triangle t[2] = {
-    //    triangle(vec3(-0.2f, 0.2f, 2.0f), vec3(0.0f, 0.2f, 2.0f), vec3(-0.2f, -0.2f, 2.0f), color(0, 255, 0, 255)),
-    //    triangle(vec3(-0.2f, 0.2f, 3.0f), vec3(0.0f, 0.2f, 3.0f), vec3(-0.2f, -0.2f, 3.0f), color(255, 0, 0, 255)),
-    //};
-    //draw_triangles(window, t, _countof(t));
+    //render_4_triangles(window);
+    render_overlapping_triangles(window);
+    //render_cube(window);
+    //render_pixels_to_vanishing_point(window);
+    //render_lines_to_vanishing_point(window);
 
     //const float k = g_vec3.x / 10.0f;
     //const float s = g_vec3.y / 10.0f;
     //const float n = g_vec3.z / 10.0f;
-    // Draw pixels converging to vanishing point
-    //for (int i = 1; i < n; ++i)
-    //{
-    //    draw_pixel(window, vec3(-k,  k, s * i), color(255, 0, 0,   255));
-    //    draw_pixel(window, vec3(k,   k, s * i), color(0, 255, 0,   255));
-    //    draw_pixel(window, vec3(k,  -k, s * i), color(0,   0, 255, 255));
-    //    draw_pixel(window, vec3(-k, -k, s * i), color(255, 0, 255, 255));
-    //}
-
-    // Draw horizontal and vertical lines converging to vanishing point
-    //for (int i = 1; i < n; ++i)
-    //{
-    //    draw_line(window, vec3(-k, k,  s * i), vec3(k, k,   s * i), color(255, 0, 0, 255));
-    //    draw_line(window, vec3(k, k,   s * i), vec3(k, -k,  s * i), color(0, 255, 0, 255));
-    //    draw_line(window, vec3(k, -k,  s * i), vec3(-k, -k, s * i), color(0, 0, 255, 255));
-    //    draw_line(window, vec3(-k, -k, s * i), vec3(-k, k,  s * i), color(255, 0, 255, 255));
-    //}
-    //
-    //draw_line(window, vec3(-k, -k, s), vec3(-k, -k, s * n), color(255, 255, 0, 255));
-    //draw_line(window, vec3(k, -k,  s), vec3(k, -k,  s * n), color(255, 255, 0, 255));
-
-    draw_cube(window);
-
     //const Mat4 cube = orthographic_mat4(1.0f, 100.0f, 1.0f, 99.9f, 100.0f, 999.9f);
     //const Vec3 in = vec3(g_fov, g_near_z, g_far_z);
     //const Vec3 out = mat4_x_vec3(cube, in);
@@ -107,7 +133,7 @@ void render(Window* window)
 int main()
 {
     Window* window = show("3d Demo", screen_width, screen_height);
-    update(window, 0.16667f);
+    update(window);
     close_window(&window);
     return 0;
 }

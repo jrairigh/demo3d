@@ -9,11 +9,14 @@ float lerpf(const float a, const float b, const float t);
 MyColor lerp_color(const MyColor a, const MyColor b, const float t);
 
 // vector math
+Vec3 cross_product(const Vec3 a, const Vec3 b);
+Vec4 vec3_to_vec4(const Vec3 v, float w);
 bool is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2);
-float is_within_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2);
+float is_within_triangle(const Vec2 v, const Vec3 p0, const Vec3 p1, const Vec3 p2);
 float vec2_determinant(const Vec2 p0, const Vec2 p1);
 float vec2_magnitude(const Vec2 p);
 Vec2 vec2_minus_vec2(const Vec2 a, const Vec2 b);
+Vec3 vec3_minus_vec3(const Vec3 a, const Vec3 b);
 Vec3 scalar_x_vec3(const float s, const Vec3 a);
 Vec4 scalar_x_vec4(const float s, const Vec4 a);
 Vec3 mat4_x_vec3(const Mat4 m, const Vec3 a);

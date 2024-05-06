@@ -8,6 +8,7 @@
 float g_fov;
 float g_near_z;
 float g_far_z;
+bool g_orthographic_mode;
 Vec3 g_vec3;
 
 typedef struct Window
@@ -18,6 +19,7 @@ typedef struct Window
     Mat4 view_matrix;
     float* z_buffer;
     void (*pre_render)();
+    void (*render)();
     void (*post_render)();
     void (*draw_pixel)(const Vec2 device_coordinate, const MyColor color);
     void (*draw_line)(const Vec2 start, const Vec2 end, const MyColor color);
@@ -30,7 +32,7 @@ typedef struct Window
 } Window;
 
 Window* show(const char* title, const uint32_t viewport_width, const uint32_t viewport_height);
-void update(Window* window, const float ts);
+void update(Window* window);
 void render(Window* window);
 void close_window(Window** window);
 

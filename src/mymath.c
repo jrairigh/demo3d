@@ -25,6 +25,11 @@ Vec2 vec2_minus_vec2(const Vec2 a, const Vec2 b)
     return vec2(a.x - b.x, a.y - b.y);
 }
 
+Vec3 vec3_minus_vec3(const Vec3 a, const Vec3 b)
+{
+    return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
 float lerpf(const float a, const float b, const float t)
 {
     return (1.0f - t) * a + t * b;
@@ -55,9 +60,14 @@ bool is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p
     return a >= 0 && b >= 0 && c >= 0;
 }
 
-float is_within_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2)
+float is_within_triangle(const Vec2 v, const Vec3 p0, const Vec3 p1, const Vec3 p2)
 {
-    return -1.0f;
+    const Vec3 p0p1 = vec3_minus_vec3(p1, p0);
+    const Vec3 p0p2 = vec3_minus_vec3(p2, p0);
+    const Vec3 normal = cross_product(p0p1, p0p2);
+    const float z = p0.z - (normal.x / normal.z) * (v.x - p0.x) - (normal.y / normal.z) * (v.y - p0.y);
+    const bool inside_triangle = is_inside_triangle(v, vec2(p0.x, p0.y), vec2(p1.x, p1.y), vec2(p2.x, p2.y));
+    return inside_triangle ? z : -1.0f;
 }
 
 bool is_within_canonical_view_volume(const float x, const float y, const float z)
@@ -67,6 +77,24 @@ bool is_within_canonical_view_volume(const float x, const float y, const float z
         (0.0f <= z && z <= 1.0f);
 }
 
+Vec3 cross_product(const Vec3 a, const Vec3 b)
+{
+    /*
+    | i  j  k  |
+    | ax ay az |
+    | bx by bz |
+    */
+    return vec3(
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
+    );
+}
+
+Vec4 vec3_to_vec4(const Vec3 v, float w)
+{
+    return vec4(v.x, v.y, v.z, w);
+}
 
 Vec3 scalar_x_vec3(const float s, const Vec3 a)
 {
