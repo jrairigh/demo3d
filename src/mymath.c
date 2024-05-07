@@ -12,12 +12,34 @@ static const float degrees_to_radians_ratio = PI / 180.0f;
 
 float vec2_determinant(const Vec2 p0, const Vec2 p1)
 {
-    return p0.x * p1.y - p1.x * p0.y;
+    /*
+    | a c |   | p0x  p0y |
+    | b d | = | p1x  p1y |
+    */
+    const float ad = p0.x * p1.y;
+    const float bc = p0.y * p1.x;
+    return ad - bc;
 }
 
 float vec2_magnitude(const Vec2 p)
 {
-    return sqrtf(p.x * p.x + p.y * p.y);
+    const float x2 = p.x * p.x;
+    const float y2 = p.y * p.y;
+    return sqrtf(x2 + y2);
+}
+
+float vec3_magnitude(const Vec3 p)
+{
+    const float x2 = p.x * p.x;
+    const float y2 = p.y * p.y;
+    const float z2 = p.z * p.z;
+    return sqrtf(x2 + y2 + z2);
+}
+
+Vec3 normalized(const Vec3 a)
+{
+    const float s = 1.0f / vec3_magnitude(a);
+    return scalar_x_vec3(s, a);
 }
 
 Vec2 vec2_minus_vec2(const Vec2 a, const Vec2 b)
@@ -109,6 +131,14 @@ Vec3 scalar_x_vec3(const float s, const Vec3 a)
 Vec4 scalar_x_vec4(const float s, const Vec4 a)
 {
     return vec4(a.x * s, a.y * s, a.z * s, a.w * s);
+}
+
+float vec3_dot_product(const Vec3 a, const Vec3 b)
+{
+    const float x = a.x * b.x;
+    const float y = a.y * b.y;
+    const float z = a.z * b.z;
+    return x + y + z;
 }
 
 Vec3 mat3_x_vec3(const Mat3 m, const Vec3 a)
@@ -233,8 +263,48 @@ Mat3 rotate_y_axis(const float angle_degrees)
 {
     const float radians = angle_degrees * degrees_to_radians_ratio;
     return mat3(
-        sinf(radians), 0.0f, -cosf(radians),
+        cosf(radians), 0.0f, -sinf(radians),
         0.0f,          1.0f, 0.0f,
-        cosf(radians), 0.0f, sinf(radians)
+        sinf(radians), 0.0f, cosf(radians)
+    );
+}
+
+Mat4 mat4_add_mat4(const Mat4 m1, const Mat4 m2)
+{
+    float v00 = m1.v00 + m2.v00;
+    float v01 = m1.v01 + m2.v01;
+    float v02 = m1.v02 + m2.v02;
+    float v03 = m1.v03 + m2.v03;
+
+    float v10 = m1.v10 + m2.v10;
+    float v11 = m1.v11 + m2.v11;
+    float v12 = m1.v12 + m2.v12;
+    float v13 = m1.v13 + m2.v13;
+
+    float v20 = m1.v20 + m2.v20;
+    float v21 = m1.v21 + m2.v21;
+    float v22 = m1.v22 + m2.v22;
+    float v23 = m1.v23 + m2.v23;
+
+    float v30 = m1.v30 + m2.v30;
+    float v31 = m1.v31 + m2.v31;
+    float v32 = m1.v32 + m2.v32;
+    float v33 = m1.v33 + m2.v33;
+
+    return mat4(
+        v00, v01, v02, v03,
+        v10, v11, v12, v13,
+        v20, v21, v22, v23,
+        v30, v31, v32, v33
+    );
+}
+
+Mat4 translation_mat4(const Vec3 v)
+{
+    return mat4(
+        1.0f, 0.0f, 0.0f, v.x,
+        0.0f, 1.0f, 0.0f, v.y,
+        0.0f, 0.0f, 1.0f, v.z,
+        0.0f, 0.0f, 0.0f, 1.0f
     );
 }

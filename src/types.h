@@ -42,7 +42,7 @@ typedef struct Mat3
 
 typedef struct Mat4
 {
-    /*    0  1  2  3
+    /*....0..1..2..3
       0 | v  v  v  v |
       1 | v  v  v  v |
       2 | v  v  v  v |
@@ -77,3 +77,7 @@ Mat4 mat4(
     const float v10, const float v11, const float v12, const float v13, 
     const float v20, const float v21, const float v22, const float v23, 
     const float v30, const float v31, const float v32, const float v33);
+
+extern const Vec3 x_axis;
+extern const Vec3 y_axis;
+extern const Vec3 z_axis;

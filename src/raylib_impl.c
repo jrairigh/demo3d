@@ -69,6 +69,11 @@ void raylib_on_update(Window* window, const float ts)
     {
         show_fps = !show_fps;
     }
+
+    window->wasd_key_state[0] = IsKeyPressedRepeat(KEY_W);
+    window->wasd_key_state[1] = IsKeyPressedRepeat(KEY_A);
+    window->wasd_key_state[2] = IsKeyPressedRepeat(KEY_S);
+    window->wasd_key_state[3] = IsKeyPressedRepeat(KEY_D);
 }
 
 void raylib_begin_draw()
@@ -223,7 +228,7 @@ static void draw_controls()
     GuiCheckBox(
         rect(orthographic_mode_checkbox_x, orthographic_mode_checkbox_y, orthographic_mode_checkbox_width, orthographic_mode_checkbox_height),
         "Orthographic",
-        &g_orthographic_mode);
+        (bool*)&g_orthographic_mode);
 
     GuiSlider(rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), "FOV", TextFormat("%2.0f", g_fov), &g_fov, 1.0f, 100.0f);
     GuiSlider(rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), "Near Z", TextFormat("%2.1f", g_near_z), &g_near_z, 1, 99.9f);

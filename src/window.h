@@ -2,6 +2,8 @@
 
 #include "types.h"
 
+#include "camera.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -15,8 +17,9 @@ typedef struct Window
 {
     const char* title;
     bool is_open;
+    bool wasd_key_state[4];
     uint32_t screen_width, screen_height;
-    Mat4 view_matrix;
+    MyCamera camera;
     float* z_buffer;
     void (*pre_render)();
     void (*render)();

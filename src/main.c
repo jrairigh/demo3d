@@ -38,7 +38,7 @@ void render_cube(Window* window, const float ts)
     const float angle = lerpf(-180.0f, 180.0f, (500.0f + g_vec3.x) / 1000.0f);
     const float y = lerpf(-1000.0f, 1000.0f, (500.0f + g_vec3.y) / 1000.0f);
     const float z = lerpf(500.0f, 3000.0f, (500.0f + g_vec3.z) / 1000.0f);
-    draw_wireframe_box(window, 200.0f, 800.0f, 400.0f, angle, vec3(0.0f, y, z), color(255, 255, 0, 255));
+    draw_wireframe_box(window, 200.0f, 800.0f, 400.0f, angle, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
 }
 
 void render_pixels_to_vanishing_point(Window* window)

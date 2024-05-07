@@ -1,5 +1,9 @@
 #include "types.h"
 
+const Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
+const Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
+const Vec3 z_axis = { 0.0f, 0.0f, 1.0f };
+
 Vec2 vec2(const float x, const float y)
 {
     return (Vec2) { x, y };

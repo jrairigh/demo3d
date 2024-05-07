@@ -7,11 +7,40 @@
 #include <stdio.h>
 #include <string.h>
 
+enum WASD_Keys
+{
+    W_KEY, 
+    A_KEY,
+    S_KEY,
+    D_KEY
+};
+
 float g_fov = 90.0f;
 float g_near_z = 1.0f;
-float g_far_z = 999.9f;
+float g_far_z = 10000.0f;
 bool g_orthographic_mode = 0;
 Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
+
+void update_camera_position(Window* window, Vec3* camera_position, Vec3* camera_look_at)
+{
+    const bool w_key_down = window->wasd_key_state[W_KEY];
+    const bool a_key_down = window->wasd_key_state[A_KEY];
+    const bool s_key_down = window->wasd_key_state[S_KEY];
+    const bool d_key_down = window->wasd_key_state[D_KEY];
+    if (!w_key_down && !a_key_down && !s_key_down && !d_key_down)
+        return;
+
+    const float speed = 10.0f;
+    float z = ((int)window->wasd_key_state[W_KEY]) * speed;
+    z += ((int)window->wasd_key_state[S_KEY]) * -1.0f * speed;
+    float x = ((int)window->wasd_key_state[D_KEY]) * speed;
+    x += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed;
+    camera_position->x += x;
+    camera_position->z += z;
+
+    // look towards the origin of world
+    *camera_look_at = normalized(scalar_x_vec3(-1.0f, *camera_position));
+}
 
 Window* create_window_impl()
 {
@@ -55,14 +84,26 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     const uint32_t viewport_height = window->get_viewport_height();
     window->z_buffer = (float*)malloc(viewport_width * viewport_height * sizeof(float));
     clear_z_buffer(window);
+
+    const Vec3 camera_look_at = z_axis;
+    const Vec3 camera_up = y_axis;
+    const Vec3 camera_position = vec3(0.0f, 0.0f, -1000.0f);
+    const float aspect_ratio = (float)viewport_width / (float)viewport_height;
+    window->camera = perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, g_fov, g_near_z, g_far_z);
+
     return window;
 }
 
 void update(Window* window)
 {
+    const Vec3 camera_up = y_axis;
+    Vec3 camera_look_at = { 0.0f, 0.0f, -1.0f };
+    Vec3 camera_position = vec3(0.0f, 0.0f, -1000.0f);
     const float elapsed_time = 0.16667f;
     while (window->is_open)
     {
+        window->on_update(window, elapsed_time);
+
         const float viewport_width = (float)window->get_viewport_width();
         const float viewport_height = (float)window->get_viewport_height();
         const float aspect_ratio = viewport_width / viewport_height;
@@ -70,11 +111,11 @@ void update(Window* window)
         const float y = fabsf(g_vec3.y);
         const float z = fabsf(g_vec3.z);
 
-        window->view_matrix = g_orthographic_mode 
-            ? orthographic_mat4(-x, x, -y, y, -z, z) 
-            : perspective_mat4(aspect_ratio, g_fov, g_near_z, g_far_z);
+        update_camera_position(window, &camera_position, &camera_look_at);
+        window->camera = g_orthographic_mode
+            ? orthographic_camera(camera_position, -x, x, -y, y, -z, z)
+            : perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, g_fov, g_near_z, g_far_z);
 
-        window->on_update(window, elapsed_time);
         window->pre_render();
         render(window, elapsed_time);
         //window->render();
@@ -93,7 +134,7 @@ void close_window(Window** window_ptr)
 
 void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
 {
-    const Vec4 p2 = mat4_x_vec4(window->view_matrix, vec4(p1.x, p1.y, p1.z, 1.0f));
+    const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec4(p1.x, p1.y, p1.z, 1.0f));
     if (p2.w == 0.0f)
     {
         printf("w is zero\n");
@@ -116,8 +157,8 @@ void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor c
 {
     Vec4 start_ = vec4(start.x, start.y, start.z, 1.0f);
     Vec4 end_ = vec4(end.x, end.y, end.z, 1.0f);
-    Vec4 p0 = mat4_x_vec4(window->view_matrix, start_);
-    Vec4 p1 = mat4_x_vec4(window->view_matrix, end_);
+    Vec4 p0 = mat4_x_vec4(window->camera.MVP, start_);
+    Vec4 p1 = mat4_x_vec4(window->camera.MVP, end_);
 
     if (p0.w == 0.0f || p1.w == 0.0f)
     {
@@ -166,9 +207,9 @@ void draw_triangle(Window* window, const Triangle triangle)
             const Vec2 device_coordinate = vec2(normalized_x, normalized_y);
 
             // transform by view matrix
-            const Vec4 p0 = mat4_x_vec4(window->view_matrix, vec3_to_vec4(triangle.p0, 1.0f));
-            const Vec4 p1 = mat4_x_vec4(window->view_matrix, vec3_to_vec4(triangle.p1, 1.0f));
-            const Vec4 p2 = mat4_x_vec4(window->view_matrix, vec3_to_vec4(triangle.p2, 1.0f));
+            const Vec4 p0 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p0, 1.0f));
+            const Vec4 p1 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p1, 1.0f));
+            const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p2, 1.0f));
 
             if (p0.w * p1.w * p2.w == 0.0f)
             {
