@@ -10,6 +10,15 @@ const int true = 1;
 const int false = 0;
 static const float degrees_to_radians_ratio = PI / 180.0f;
 
+float clamp(const float v, const float min_value, const float max_value)
+{
+    if (v <= min_value)
+        return min_value;
+    if (v >= max_value)
+        return max_value;
+    return v;
+}
+
 float vec2_determinant(const Vec2 p0, const Vec2 p1)
 {
     /*
@@ -60,6 +69,15 @@ Vec3 vec3_add_vec3(const Vec3 a, const Vec3 b)
 float lerpf(const float a, const float b, const float t)
 {
     return (1.0f - t) * a + t * b;
+}
+
+MyColor color_add_color(const MyColor a, const MyColor b)
+{
+    const uint8_t red = (uint8_t)clamp((float)(a.red + b.red), 0.0f, 255.0f);
+    const uint8_t green = (uint8_t)clamp((float)(a.green + b.green), 0.0f, 255.0f);
+    const uint8_t blue = (uint8_t)clamp((float)(a.blue + b.blue), 0.0f, 255.0f);
+    const uint8_t alpha = (uint8_t)clamp((float)(a.alpha + b.alpha), 0.0f, 255.0f);
+    return color(red, green, blue, alpha);
 }
 
 MyColor lerp_color(const MyColor a, const MyColor b, const float t)

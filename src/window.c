@@ -79,6 +79,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->screen_height = screen_height;
     window->is_open = true;
     window->show(title, screen_width, screen_height);
+    window->number_of_lights = 0;
 
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
@@ -97,13 +98,14 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 void update(Window* window)
 {
     const Vec3 camera_up = y_axis;
-    Vec3 camera_look_at = { 0.0f, 0.0f, -1.0f };
-    Vec3 camera_position = vec3(0.0f, 0.0f, -1000.0f);
+    Vec3 camera_look_at = { 0.0f, 0.0f, 1.0f };
+    Vec3 camera_position = vec3(0.0f, 0.0f, 0.0f);
     const float elapsed_time = 0.16667f;
     while (window->is_open)
     {
         window->on_update(window, elapsed_time);
 
+        window->number_of_lights = 0;
         const float viewport_width = (float)window->get_viewport_width();
         const float viewport_height = (float)window->get_viewport_height();
         const float aspect_ratio = viewport_width / viewport_height;
@@ -193,6 +195,7 @@ void draw_triangles(Window* window, const Triangles triangle, const uint32_t tri
 
 void draw_triangle(Window* window, const Triangle triangle)
 {
+    MyColor c = triangle.color;
     const uint32_t viewport_height = window->get_viewport_height();
     const uint32_t viewport_width = window->get_viewport_width();
     for (uint32_t i = 0; i < viewport_height; ++i)
@@ -237,8 +240,12 @@ void draw_triangle(Window* window, const Triangle triangle)
             if (z < 0.0f || z > window->z_buffer[i * viewport_width + j])
                 continue;
 
+            MyColor pixel_color = triangle.color;
+            if (window->number_of_lights > 0)
+                pixel_color = color_at_position(window->point_lights[0], vec3(device_coordinate.x, device_coordinate.y, p0.z));
+
             window->z_buffer[i * viewport_width + j] = z;
-            window->draw_pixel(device_coordinate, triangle.color);
+            window->draw_pixel(device_coordinate, pixel_color);
         }
     }
 }
@@ -302,4 +309,11 @@ void draw_wireframe_box(Window* window, const float width, const float height, c
     // side faces
     draw_line(window, a_, h_, color);
     draw_line(window, c_, f_, color);
+}
+
+void add_light_source(Window* window, const PointLight light)
+{
+    const uint32_t index = window->number_of_lights;
+    window->point_lights[index] = light;
+    window->number_of_lights++;
 }

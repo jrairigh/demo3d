@@ -3,6 +3,7 @@
 #include "types.h"
 
 #include "camera.h"
+#include "point_light.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -20,6 +21,8 @@ typedef struct Window
     bool wasd_key_state[4];
     uint32_t screen_width, screen_height;
     MyCamera camera;
+    PointLight point_lights[2];
+    uint32_t number_of_lights;
     float* z_buffer;
     void (*pre_render)();
     void (*render)();
@@ -45,3 +48,5 @@ void draw_triangle(Window* window, const Triangle triangle);
 void draw_triangles(Window* window, const Triangles triangles, const uint32_t triangle_count);
 void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color);
 void draw_wireframe_box(Window* window, const float width, const float height, const float depth, const float angle, const Vec3 position, const MyColor color);
+
+void add_light_source(Window* window, const PointLight light);

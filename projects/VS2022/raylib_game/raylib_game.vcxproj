@@ -349,6 +349,7 @@
     <ClCompile Include="..\..\..\src\camera.c" />
     <ClCompile Include="..\..\..\src\main.c" />
     <ClCompile Include="..\..\..\src\mymath.c" />
+    <ClCompile Include="..\..\..\src\point_light.c" />
     <ClCompile Include="..\..\..\src\raylib_impl.c" />
     <ClCompile Include="..\..\..\src\types.c" />
     <ClCompile Include="..\..\..\src\window.c" />
@@ -356,6 +357,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\src\camera.h" />
     <ClInclude Include="..\..\..\src\mymath.h" />
+    <ClInclude Include="..\..\..\src\point_light.h" />
     <ClInclude Include="..\..\..\src\raylib_impl.h" />
     <ClInclude Include="..\..\..\src\types.h" />
     <ClInclude Include="..\..\..\src\window.h" />

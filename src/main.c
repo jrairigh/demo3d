@@ -24,10 +24,10 @@ void render_overlapping_triangles(Window* window)
     //const float s = g_vec3.y * 0.1f;
     //const float n = g_vec3.z * 0.1f;
     Triangle t[4] = {
-        triangle(vec3(-50.0f, 50.0f, 100.0f), vec3(0.0f, 50.0f, 100.0f), vec3(-50.0f, -50.0f, 100.0f), color(255, 0, 0, 255)),
-        triangle(vec3(-50.0f, 50.0f, 150.0f), vec3(0.0f, 50.0f, 150.0f), vec3(-50.0f, -50.0f, 150.0f), color(190, 0, 0, 255)),
-        triangle(vec3(-50.0f, 50.0f, 250.0f), vec3(0.0f, 50.0f, 250.0f), vec3(-50.0f, -50.0f, 250.0f), color(150, 0, 0, 255)),
-        triangle(vec3(-50.0f, 50.0f, 400.0f), vec3(0.0f, 50.0f, 400.0f), vec3(-50.0f, -50.0f, 400.0f), color(100, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 100.0f), vec3(0.0f, 50.0f, 100.0f), vec3(-50.0f, -50.0f, 100.0f), color(0, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 150.0f), vec3(0.0f, 50.0f, 150.0f), vec3(-50.0f, -50.0f, 150.0f), color(0, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 250.0f), vec3(0.0f, 50.0f, 250.0f), vec3(-50.0f, -50.0f, 250.0f), color(0, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 400.0f), vec3(0.0f, 50.0f, 400.0f), vec3(-50.0f, -50.0f, 400.0f), color(0, 0, 0, 255)),
     };
 
     draw_triangles(window, t, _countof(t));
@@ -75,8 +75,11 @@ void render_lines_to_vanishing_point(Window* window)
 void render(Window* window, const float elapsed_time)
 {
     //render_4_triangles(window);
-    //render_overlapping_triangles(window);
-    render_cube(window, elapsed_time);
+    const float intensity = lerpf(1000.0f, 10000.0f, (500.0f + g_vec3.y) / 1000.0f);
+    const PointLight light = point_light(intensity, vec3(10.0f, 20.0f, -50.0f), color(0, 255, 0, 255));
+    add_light_source(window, light);
+    render_overlapping_triangles(window);
+    //render_cube(window, elapsed_time);
     //render_pixels_to_vanishing_point(window);
     //render_lines_to_vanishing_point(window);
 
