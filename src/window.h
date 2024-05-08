@@ -13,6 +13,8 @@ float g_near_z;
 float g_far_z;
 bool g_orthographic_mode;
 Vec3 g_vec3;
+MyColor g_light_color;
+float g_light_intensity;
 
 typedef struct Window
 {

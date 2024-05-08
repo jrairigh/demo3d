@@ -11,20 +11,47 @@
 
 static Font font = { 0 };
 static Image image_buffer;
+static Texture2D texture2d;
 static const float font_size = 18.0f;
 static const float font_spacing = 5.0f;
 static const Color font_color = {0, 228, 48, 255};
 static bool show_fps = false;
 static bool collapse_control_window = false;
+static Color light_color = { 255, 0, 0, 255 };
 
 #define BG_COLOR CLITERAL(Color) { 50, 49, 64, 255 }
 #define TRANSPARENT CLITERAL(Color) {0, 0, 0, 0}
 
 // GUI design variables for positioning and sizing components
-//float x = 0.0f, y = 0.0f, width = 50.0f, height = 20.0f;
+const bool show_gui_component_controls = false;
+float gui_component_x = 0.0f, 
+    gui_component_y = 0.0f, 
+    gui_component_width = 50.0f, 
+    gui_component_height = 20.0f;
+
 const float control_window_screen_width_percentage = 0.27f;
 float control_window_height;
 float control_window_width;
+
+static Color scalar_x_color(const float s, const Color color)
+{
+    return (Color) {
+        s * color.r,
+        s * color.g,
+        s * color.b,
+        s * color.a
+    };
+}
+
+static Color color_add_color(const Color a, const Color b)
+{
+    return (Color) {
+        a.r + b.r,
+        a.g + b.g,
+        a.b + b.b,
+        a.a + b.a
+    };
+}
 
 static Rectangle rect(const float x, const float y, const float width, const float height)
 {
@@ -33,6 +60,8 @@ static Rectangle rect(const float x, const float y, const float width, const flo
 
 static void draw_info();
 static void draw_controls();
+static void post_processing();
+static void smooth_rendered_image();
 
 uint32_t raylib_viewport_width()
 {
@@ -58,6 +87,7 @@ void raylib_show(const char* title, const uint32_t screen_width, const uint32_t 
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
 
     image_buffer = GenImageWhiteNoise((int)raylib_viewport_width(), (int)raylib_viewport_height(), 1.0f);
+    texture2d = LoadTextureFromImage(image_buffer);
 }
 
 void raylib_on_update(Window* window, const float ts)
@@ -84,6 +114,8 @@ void raylib_begin_draw()
 
 void raylib_end_draw()
 {
+    post_processing();
+
     // Drawing overlays last so viewport window doesn't render graphics overtop of it
     if (show_fps)
         draw_info();
@@ -97,9 +129,10 @@ void raylib_end_draw()
 
 void raylib_render()
 {
-    Texture2D texture = LoadTextureFromImage(image_buffer);
-    DrawTexture(texture, 0, 0, TRANSPARENT);
-    UnloadTexture(texture);
+    //Texture2D texture = LoadTextureFromImage(image_buffer);
+    //post_processing();
+    //DrawTexture(texture2d, 0, 0, TRANSPARENT);
+    //UnloadTexture(texture);
 }
 
 void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
@@ -113,29 +146,93 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
     const int viewport_space_y = (int)((1.0f - y) * viewport_half_height);
 
     // drawing extra pixels to fill in gaps
-    DrawPixel(viewport_space_x - 1, viewport_space_y - 1, c);
-    DrawPixel(viewport_space_x, viewport_space_y - 1, c);
-    DrawPixel(viewport_space_x + 1, viewport_space_y - 1, c);
+    //DrawPixel(viewport_space_x - 1, viewport_space_y - 1, c);
+    //DrawPixel(viewport_space_x, viewport_space_y - 1, c);
+    //DrawPixel(viewport_space_x + 1, viewport_space_y - 1, c);
 
-    DrawPixel(viewport_space_x - 1, viewport_space_y, c);
-    DrawPixel(viewport_space_x, viewport_space_y, c);
-    DrawPixel(viewport_space_x + 1, viewport_space_y, c);
+    //DrawPixel(viewport_space_x - 1, viewport_space_y, c);
+    //DrawPixel(viewport_space_x, viewport_space_y, c);
+    //DrawPixel(viewport_space_x + 1, viewport_space_y, c);
 
-    DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
-    DrawPixel(viewport_space_x, viewport_space_y + 1, c);
-    DrawPixel(viewport_space_x + 1, viewport_space_y + 1, c);
+    //DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
+    //DrawPixel(viewport_space_x, viewport_space_y + 1, c);
+    //DrawPixel(viewport_space_x + 1, viewport_space_y + 1, c);
 
     //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y - 1, c);
     //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y - 1, c);
     //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y - 1, c);
     //
     //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y, c);
+    ImageDrawPixel(&image_buffer, viewport_space_x, viewport_space_y, c);
     //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y, c);
     //
     //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y + 1, c);
     //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y + 1, c);
     //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y + 1, c);
+}
+
+void post_processing()
+{
+    smooth_rendered_image();
+}
+
+void smooth_rendered_image()
+{
+    const uint32_t viewport_width = raylib_viewport_width();
+    const uint32_t viewport_height = raylib_viewport_height();
+    for (uint32_t y = 0; y < viewport_height; ++y)
+    {
+        for (uint32_t x = 0; x < viewport_width; ++x)
+        {
+            const float zero_value = 0.0f;
+            const float corner_value = 0.5f;
+            const float adjacent_value = 0.5f;
+            const float target_value = 0.5f;
+
+            const int x_minus_1 = (int)x - 1;
+            const int y_minus_1 = (int)y - 1;
+            const int x_plus_1 = (int)x + 1;
+            const int y_plus_1 = (int)y + 1;
+
+            /* Average the 3x3 area of pixel colors where e is the target pixel
+                 x-1  x  x+1
+            y-1 | a | b | c |
+            y   | d | e | f |
+            y+1 | g | h | i |
+            */
+            const float a = x_minus_1 >= 0 && y_minus_1 >= 0 ? corner_value : zero_value;
+            const float b = y_minus_1 >= 0 ? adjacent_value : zero_value;
+            const float c = x_plus_1 < viewport_width && y_minus_1 >= 0 ? corner_value : zero_value;
+            const float d = x_minus_1 >= 0 ? adjacent_value : zero_value;
+            const float e = target_value;
+            const float f = x_plus_1 < viewport_width ? adjacent_value : zero_value;
+            const float g = x_minus_1 >= 0 && y_plus_1 < viewport_height ? corner_value : zero_value;
+            const float h = y_plus_1 < viewport_height ? adjacent_value : zero_value;
+            const float i = x_plus_1 < viewport_width && y_plus_1 < viewport_height ? corner_value : zero_value;
+
+            const Color color_a = a != zero_value ? GetImageColor(image_buffer, x_minus_1, y_minus_1) : TRANSPARENT;
+            const Color color_b = b != zero_value ? GetImageColor(image_buffer, x, y_minus_1) : TRANSPARENT;
+            const Color color_c = c != zero_value ? GetImageColor(image_buffer, x_plus_1, y_minus_1) : TRANSPARENT;
+            const Color color_d = d != zero_value ? GetImageColor(image_buffer, x_minus_1, y) : TRANSPARENT;
+            const Color color_e = GetImageColor(image_buffer, (int)x, (int)y);
+            const Color color_f = f != zero_value ? GetImageColor(image_buffer, x_plus_1, y) : TRANSPARENT;
+            const Color color_g = g != zero_value ? GetImageColor(image_buffer, x_minus_1, y_plus_1) : TRANSPARENT;
+            const Color color_h = h != zero_value ? GetImageColor(image_buffer, x, y_plus_1) : TRANSPARENT;
+            const Color color_i = i != zero_value ? GetImageColor(image_buffer, x_plus_1, y_plus_1) : TRANSPARENT;
+
+            Color color_final = scalar_x_color(a, color_a);
+            color_final = color_add_color(color_final, scalar_x_color(b, color_b));
+            color_final = color_add_color(color_final, scalar_x_color(c, color_c));
+            color_final = color_add_color(color_final, scalar_x_color(d, color_d));
+            color_final = color_add_color(color_final, scalar_x_color(e, color_e));
+            color_final = color_add_color(color_final, scalar_x_color(f, color_f));
+            color_final = color_add_color(color_final, scalar_x_color(g, color_g));
+            color_final = color_add_color(color_final, scalar_x_color(h, color_h));
+            color_final = color_add_color(color_final, scalar_x_color(i, color_i));
+
+            DrawPixel((int)x, (int)y, color_final);
+        }
+    }
 }
 
 void raylib_draw_line(const Vec2 start, const Vec2 end, const MyColor color)
@@ -164,6 +261,9 @@ void raylib_draw_overlay_text(const char* text, const Vec2 position, const MyCol
 
 void raylib_close_window()
 {
+    UnloadImage(image_buffer);
+    UnloadTexture(texture2d);
+
     // Unload global data loaded
     UnloadFont(font);
 
@@ -217,13 +317,26 @@ static void draw_controls()
     const float orthographic_mode_checkbox_x = 639.0f;
     const float orthographic_mode_checkbox_y = 201.0f;
 
+    const float light_color_picker_height = 175.0f;
+    const float light_color_picker_width = 175.0f;
+    const float light_color_picker_x = 593.0f;
+    const float light_color_picker_y = 243.0f;
+
+    const float light_intensity_slider_height = 22.0f;
+    const float light_intensity_slider_width = 50.0f;
+    const float light_intensity_slider_x = 687.0f;
+    const float light_intensity_slider_y = 435.0f;
+
     collapse_control_window = GuiWindowBox(rect(control_window_x, control_window_y, control_window_width, control_window_height), "Controls");
 
     // GUI Design controls for positioning and sizing components
-    //GuiSlider(rect(30, 420, 200, 30), "x", TextFormat("%2.2f", x), &x, 0.0f, (float)GetScreenWidth());
-    //GuiSlider(rect(30, 460, 200, 30), "y", TextFormat("%2.2f", y), &y, 0.0f, (float)GetScreenWidth());
-    //GuiSlider(rect(30, 500, 200, 30), "width", TextFormat("%2.2f", width), &width, 0.0f, (float)GetScreenWidth());
-    //GuiSlider(rect(30, 540, 200, 30), "height", TextFormat("%2.2f", height), &height, 0.0f, (float)GetScreenWidth());
+    if (show_gui_component_controls)
+    {
+        GuiSlider(rect(60, 420, 200, 30), "x", TextFormat("%2.2f", gui_component_x), &gui_component_x, 0.0f, (float)GetScreenWidth());
+        GuiSlider(rect(60, 460, 200, 30), "y", TextFormat("%2.2f", gui_component_y), &gui_component_y, 0.0f, (float)GetScreenWidth());
+        GuiSlider(rect(60, 500, 200, 30), "width", TextFormat("%2.2f", gui_component_width), &gui_component_width, 0.0f, (float)GetScreenWidth());
+        GuiSlider(rect(60, 540, 200, 30), "height", TextFormat("%2.2f", gui_component_height), &gui_component_height, 0.0f, (float)GetScreenWidth());
+    }
 
     GuiCheckBox(
         rect(orthographic_mode_checkbox_x, orthographic_mode_checkbox_y, orthographic_mode_checkbox_width, orthographic_mode_checkbox_height),
@@ -237,6 +350,19 @@ static void draw_controls()
     GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
     GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
     GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
+
+    GuiColorPicker(rect(light_color_picker_x, light_color_picker_y, light_color_picker_width, light_color_picker_height), "Light Color", &light_color);
+    g_light_color.red = light_color.r;
+    g_light_color.green = light_color.g;
+    g_light_color.blue = light_color.b;
+    g_light_color.alpha = light_color.a;
+
+    GuiSlider(
+        rect(light_intensity_slider_x, light_intensity_slider_y, light_intensity_slider_width, light_intensity_slider_height),
+        "Light Intesity",
+        TextFormat("%2.1f", g_light_intensity),
+        &g_light_intensity,
+        0.0f, 10000.0f);
 }
 
 static void draw_info()

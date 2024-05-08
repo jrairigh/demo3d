@@ -75,8 +75,7 @@ void render_lines_to_vanishing_point(Window* window)
 void render(Window* window, const float elapsed_time)
 {
     //render_4_triangles(window);
-    const float intensity = lerpf(1000.0f, 10000.0f, (500.0f + g_vec3.y) / 1000.0f);
-    const PointLight light = point_light(intensity, vec3(10.0f, 20.0f, -50.0f), color(0, 255, 0, 255));
+    const PointLight light = point_light(g_light_intensity, vec3(g_vec3.x, g_vec3.y, g_vec3.z), g_light_color);
     add_light_source(window, light);
     render_overlapping_triangles(window);
     //render_cube(window, elapsed_time);

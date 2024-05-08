@@ -71,6 +71,15 @@ float lerpf(const float a, const float b, const float t)
     return (1.0f - t) * a + t * b;
 }
 
+Vec4 color_as_vec4(const MyColor c)
+{
+    const float red = clamp(c.red / 255.0f, 0.0f, 1.0f);
+    const float green = clamp(c.green / 255.0f, 0.0f, 1.0f);
+    const float blue = clamp(c.blue / 255.0f, 0.0f, 1.0f);
+    const float alpha = clamp(c.alpha / 255.0f, 0.0f, 1.0f);
+    return vec4(red, green, blue, alpha);
+}
+
 MyColor color_add_color(const MyColor a, const MyColor b)
 {
     const uint8_t red = (uint8_t)clamp((float)(a.red + b.red), 0.0f, 255.0f);

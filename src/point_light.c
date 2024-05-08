@@ -13,11 +13,7 @@ PointLight point_light(const float intensity, const Vec3 position, const MyColor
 
 MyColor color_at_position(const PointLight light, const Vec3 position)
 {
-    const float src_red = light.Color.red / 255.0f;
-    const float src_green = light.Color.green / 255.0f;
-    const float src_blue = light.Color.blue / 255.0f;
-    const float src_alpha = light.Color.alpha / 255.0f;
-    const Vec4 light_color = vec4(src_red, src_green, src_blue, src_alpha);
+    const Vec4 light_color = color_as_vec4(light.Color);
     const float distance_to_light = vec3_magnitude(vec3_minus_vec3(position, light.Position));
     const float intensity_at_point = light.Intensity / (distance_to_light * distance_to_light);
     const Vec4 attenuated_color = scalar_x_vec4(intensity_at_point, light_color);

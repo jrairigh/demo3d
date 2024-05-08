@@ -20,6 +20,8 @@ float g_near_z = 1.0f;
 float g_far_z = 10000.0f;
 bool g_orthographic_mode = 0;
 Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
+MyColor g_light_color = { 255, 0, 0, 255 };
+float g_light_intensity = 10000.0f;
 
 void update_camera_position(Window* window, Vec3* camera_position, Vec3* camera_look_at)
 {
@@ -120,7 +122,7 @@ void update(Window* window)
 
         window->pre_render();
         render(window, elapsed_time);
-        //window->render();
+        window->render();
         window->post_render();
     }
 }

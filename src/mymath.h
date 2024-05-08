@@ -8,6 +8,7 @@ const extern float pi;
 float clamp(const float v, const float min_value, const float max_value);
 
 // color math
+Vec4 color_as_vec4(const MyColor c);
 MyColor color_add_color(const MyColor a, const MyColor b);
 float lerpf(const float a, const float b, const float t);
 MyColor lerp_color(const MyColor a, const MyColor b, const float t);
