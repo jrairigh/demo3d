@@ -8,27 +8,26 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-float g_fov;
-float g_near_z;
-float g_far_z;
-bool g_orthographic_mode;
 Vec3 g_vec3;
-MyColor g_light_color;
-float g_light_intensity;
 
 typedef struct Window
 {
     const char* title;
     bool is_open;
+    bool is_camera_active;
+    bool IsOrthographic;
     bool wasd_key_state[4];
     uint32_t screen_width, screen_height;
     MyCamera camera;
     PointLight point_lights[2];
     uint32_t number_of_lights;
+    float FOV;
+    float NearZ;
+    float FarZ;
     float* z_buffer;
     void (*pre_render)();
     void (*render)();
-    void (*post_render)();
+    void (*post_render)(struct Window* window);
     void (*draw_pixel)(const Vec2 device_coordinate, const MyColor color);
     void (*draw_line)(const Vec2 start, const Vec2 end, const MyColor color);
     void (*draw_overlay_text)(const char* text, const Vec2 position, const MyColor color);

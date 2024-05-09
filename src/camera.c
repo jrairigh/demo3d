@@ -28,6 +28,8 @@ MyCamera perspective_camera(
     );
 
     MyCamera camera;
+    camera.Position = position;
+    camera.LookAt = look_at;
     camera.MVP = mat4_x_mat4(
         perspective_mat4(aspect_ratio, fov, near_plane, far_plane), model_view_matrix);
     return camera;
@@ -43,17 +45,11 @@ MyCamera orthographic_camera(
     const float far_plane)
 {
     MyCamera camera;
+    camera.LookAt = z_axis;
+    camera.Position = position;
     camera.MVP = orthographic_mat4(left_plane, right_plane, bottom_plane, top_plane, near_plane, far_plane);
     camera.MVP.v03 = -position.x;
     camera.MVP.v13 = -position.y;
     camera.MVP.v23 = -position.z;
     return camera;
-}
-
-Vec3 get_camera_position(const MyCamera* camera)
-{
-    const float x = camera->MVP.v03;
-    const float y = camera->MVP.v13;
-    const float z = camera->MVP.v23;
-    return vec3(x, y, z);
 }

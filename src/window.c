@@ -15,33 +15,47 @@ enum WASD_Keys
     D_KEY
 };
 
-float g_fov = 90.0f;
-float g_near_z = 1.0f;
-float g_far_z = 10000.0f;
-bool g_orthographic_mode = 0;
 Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
-MyColor g_light_color = { 255, 0, 0, 255 };
-float g_light_intensity = 10000.0f;
 
-void update_camera_position(Window* window, Vec3* camera_position, Vec3* camera_look_at)
+Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
+{
+    const float viewport_width = (float)window->get_viewport_width();
+    const float viewport_height = (float)window->get_viewport_height();
+    const float nx = clamp(lerpf(-1.0f, 1.0f, position.x / viewport_width), -1.0f, 1.0f);
+    const float ny = clamp(lerpf(1.0f, -1.0f, position.y / viewport_width), -1.0f, 1.0f);
+    return vec2(nx, ny);
+}
+
+Vec3 get_position_update_from_input(const Window* window, const Vec3 start, const float speed)
 {
     const bool w_key_down = window->wasd_key_state[W_KEY];
     const bool a_key_down = window->wasd_key_state[A_KEY];
     const bool s_key_down = window->wasd_key_state[S_KEY];
     const bool d_key_down = window->wasd_key_state[D_KEY];
     if (!w_key_down && !a_key_down && !s_key_down && !d_key_down)
-        return;
+        return start;
 
-    const float speed = 10.0f;
     float z = ((int)window->wasd_key_state[W_KEY]) * speed;
     z += ((int)window->wasd_key_state[S_KEY]) * -1.0f * speed;
     float x = ((int)window->wasd_key_state[D_KEY]) * speed;
     x += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed;
-    camera_position->x += x;
-    camera_position->z += z;
+    return vec3(start.x + x, start.y, start.z + z);
+}
 
+void update_camera_position(Window* window)
+{
+    const Vec3 camera_position = window->camera.Position;
+    const Vec3 updated_camera_position = get_position_update_from_input(window, camera_position, 10.0f);
+    window->camera.Position = updated_camera_position;
     // look towards the origin of world
-    *camera_look_at = normalized(scalar_x_vec3(-1.0f, *camera_position));
+    window->camera.LookAt = normalized(scalar_x_vec3(-1.0f, updated_camera_position));
+}
+
+void update_light_position(Window* window)
+{
+    const Vec3 light_position = window->point_lights[0].Position;
+    const Vec3 updated_light_position = get_position_update_from_input(window, light_position, 10.0f);
+    window->point_lights[0].Position = updated_light_position;
 }
 
 Window* create_window_impl()
@@ -80,8 +94,13 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->screen_width = screen_width;
     window->screen_height = screen_height;
     window->is_open = true;
+    window->is_camera_active = true;
     window->show(title, screen_width, screen_height);
     window->number_of_lights = 0;
+    window->IsOrthographic = false;
+    window->FOV = 90.0f;
+    window->NearZ = 1.0f;
+    window->FarZ = 10000.0f;
 
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
@@ -90,9 +109,9 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 
     const Vec3 camera_look_at = z_axis;
     const Vec3 camera_up = y_axis;
-    const Vec3 camera_position = vec3(0.0f, 0.0f, -1000.0f);
+    const Vec3 camera_position = vec3(0.0f, 0.0f, -10.0f);
     const float aspect_ratio = (float)viewport_width / (float)viewport_height;
-    window->camera = perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, g_fov, g_near_z, g_far_z);
+    window->camera = perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
 
     return window;
 }
@@ -100,14 +119,12 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 void update(Window* window)
 {
     const Vec3 camera_up = y_axis;
-    Vec3 camera_look_at = { 0.0f, 0.0f, 1.0f };
-    Vec3 camera_position = vec3(0.0f, 0.0f, 0.0f);
     const float elapsed_time = 0.16667f;
     while (window->is_open)
     {
         window->on_update(window, elapsed_time);
+        clear_z_buffer(window);
 
-        window->number_of_lights = 0;
         const float viewport_width = (float)window->get_viewport_width();
         const float viewport_height = (float)window->get_viewport_height();
         const float aspect_ratio = viewport_width / viewport_height;
@@ -115,15 +132,16 @@ void update(Window* window)
         const float y = fabsf(g_vec3.y);
         const float z = fabsf(g_vec3.z);
 
-        update_camera_position(window, &camera_position, &camera_look_at);
-        window->camera = g_orthographic_mode
-            ? orthographic_camera(camera_position, -x, x, -y, y, -z, z)
-            : perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, g_fov, g_near_z, g_far_z);
+        window->is_camera_active ? update_camera_position(window) : update_light_position(window);
+
+        window->camera = window->IsOrthographic
+            ? orthographic_camera(window->camera.Position, -x, x, -y, y, -z, z)
+            : perspective_camera(window->camera.Position, window->camera.LookAt, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
 
         window->pre_render();
         render(window, elapsed_time);
         window->render();
-        window->post_render();
+        window->post_render(window);
     }
 }
 
@@ -204,12 +222,7 @@ void draw_triangle(Window* window, const Triangle triangle)
     {
         for (uint32_t j = 0; j < viewport_width; ++j)
         {
-            // convert from screen to normalized device coordinates
-            const float width_percentage = (float)j / (float)viewport_width;
-            const float height_percentage = (float)i / (float)viewport_height;
-            const float normalized_x = 2.0f * width_percentage - 1.0f;
-            const float normalized_y = 1.0f - 2.0f * height_percentage;
-            const Vec2 device_coordinate = vec2(normalized_x, normalized_y);
+            const Vec2 device_coordinate = get_normalized_coordinate(window, vec2((float)j, (float)i));
 
             // transform by view matrix
             const Vec4 p0 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p0, 1.0f));

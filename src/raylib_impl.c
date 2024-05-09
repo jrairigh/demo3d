@@ -23,7 +23,6 @@ static Color light_color = { 255, 0, 0, 255 };
 #define TRANSPARENT CLITERAL(Color) {0, 0, 0, 0}
 
 // GUI design variables for positioning and sizing components
-const bool show_gui_component_controls = false;
 float gui_component_x = 0.0f, 
     gui_component_y = 0.0f, 
     gui_component_width = 50.0f, 
@@ -73,6 +72,15 @@ uint32_t raylib_viewport_height()
     return (uint32_t)GetScreenHeight();
 }
 
+Vector2 raylib_get_normalized_coordinate(const Vector2 position)
+{
+    const float viewport_width = (float)raylib_viewport_width();
+    const float viewport_height = (float)raylib_viewport_height();
+    const float nx = Clamp(Lerp(-1.0f, 1.0f, position.x / viewport_width), -1.0f, 1.0f);
+    const float ny = Clamp(Lerp(1.0f, -1.0f, position.y / viewport_width), -1.0f, 1.0f);
+    return (Vector2) { nx, ny };
+}
+
 void raylib_show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
 {
     InitWindow(screen_width, screen_height, title);
@@ -112,9 +120,9 @@ void raylib_begin_draw()
     ClearBackground(BG_COLOR);
 }
 
-void raylib_end_draw()
+void raylib_end_draw(Window* window)
 {
-    post_processing();
+    //post_processing();
 
     // Drawing overlays last so viewport window doesn't render graphics overtop of it
     if (show_fps)
@@ -122,7 +130,7 @@ void raylib_end_draw()
     else
         DrawTextEx(font, "Show info 'I' key", Vector2Scale(Vector2One(), 2.0f), font_size, font_spacing, font_color);
 
-    draw_controls();
+    draw_controls(window);
 
     EndDrawing();
 }
@@ -151,7 +159,7 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
     //DrawPixel(viewport_space_x + 1, viewport_space_y - 1, c);
 
     //DrawPixel(viewport_space_x - 1, viewport_space_y, c);
-    //DrawPixel(viewport_space_x, viewport_space_y, c);
+    DrawPixel(viewport_space_x, viewport_space_y, c);
     //DrawPixel(viewport_space_x + 1, viewport_space_y, c);
 
     //DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
@@ -163,7 +171,7 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
     //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y - 1, c);
     //
     //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y, c);
-    ImageDrawPixel(&image_buffer, viewport_space_x, viewport_space_y, c);
+    //ImageDrawPixel(&image_buffer, viewport_space_x, viewport_space_y, c);
     //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y, c);
     //
     //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y + 1, c);
@@ -271,7 +279,7 @@ void raylib_close_window()
     CloseWindow();
 }
 
-static void draw_controls()
+static void draw_controls(Window* window)
 {
     if (collapse_control_window)
     {
@@ -327,50 +335,83 @@ static void draw_controls()
     const float light_intensity_slider_x = 687.0f;
     const float light_intensity_slider_y = 435.0f;
 
+    const float status_bar_height = 26.0f;
+    const float status_bar_width = 800.0f;
+    const float status_bar_x = 0.0f;
+    const float status_bar_y = 575.0f;
+
+    const float toggle_active_height = 22.0f;
+    const float toggle_active_width = 182.0f;
+    const float toggle_active_x = 602.0f;
+    const float toggle_active_y = 543.0f;
+
     collapse_control_window = GuiWindowBox(rect(control_window_x, control_window_y, control_window_width, control_window_height), "Controls");
 
+#if 0
     // GUI Design controls for positioning and sizing components
-    if (show_gui_component_controls)
-    {
-        GuiSlider(rect(60, 420, 200, 30), "x", TextFormat("%2.2f", gui_component_x), &gui_component_x, 0.0f, (float)GetScreenWidth());
-        GuiSlider(rect(60, 460, 200, 30), "y", TextFormat("%2.2f", gui_component_y), &gui_component_y, 0.0f, (float)GetScreenWidth());
-        GuiSlider(rect(60, 500, 200, 30), "width", TextFormat("%2.2f", gui_component_width), &gui_component_width, 0.0f, (float)GetScreenWidth());
-        GuiSlider(rect(60, 540, 200, 30), "height", TextFormat("%2.2f", gui_component_height), &gui_component_height, 0.0f, (float)GetScreenWidth());
-    }
+    GuiSlider(rect(60, 420, 200, 30), "x", TextFormat("%2.2f", gui_component_x), &gui_component_x, 0.0f, (float)GetScreenWidth());
+    GuiSlider(rect(60, 460, 200, 30), "y", TextFormat("%2.2f", gui_component_y), &gui_component_y, 0.0f, (float)GetScreenWidth());
+    GuiSlider(rect(60, 500, 200, 30), "width", TextFormat("%2.2f", gui_component_width), &gui_component_width, 0.0f, (float)GetScreenWidth());
+    GuiSlider(rect(60, 540, 200, 30), "height", TextFormat("%2.2f", gui_component_height), &gui_component_height, 0.0f, (float)GetScreenWidth());
+    const Rectangle gui_component_rect = rect(gui_component_x, gui_component_y, gui_component_width, gui_component_height);
+#endif
 
     GuiCheckBox(
         rect(orthographic_mode_checkbox_x, orthographic_mode_checkbox_y, orthographic_mode_checkbox_width, orthographic_mode_checkbox_height),
         "Orthographic",
-        (bool*)&g_orthographic_mode);
+        (bool*)&window->IsOrthographic);
 
-    GuiSlider(rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), "FOV", TextFormat("%2.0f", g_fov), &g_fov, 1.0f, 100.0f);
-    GuiSlider(rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), "Near Z", TextFormat("%2.1f", g_near_z), &g_near_z, 1, 99.9f);
-    GuiSlider(rect(far_z_slider_x, far_z_slider_y, far_z_slider_width, far_z_slider_height), "Far Z", TextFormat("%2.1f", g_far_z), &g_far_z, 100.0f, 10000.0f);
+    GuiSlider(
+        rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), 
+        "FOV", 
+        TextFormat("%2.0f", window->FOV), 
+        &window->FOV, 1.0f, 100.0f);
+    GuiSlider(
+        rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), 
+        "Near Z", 
+        TextFormat("%2.1f", window->NearZ), 
+        &window->NearZ, 1, 99.9f);
+    GuiSlider(
+        rect(far_z_slider_x, far_z_slider_y, far_z_slider_width, far_z_slider_height), 
+        "Far Z", 
+        TextFormat("%2.1f", window->FarZ), 
+        &window->FarZ, 100.0f, 10000.0f);
 
     GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
     GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
     GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
 
     GuiColorPicker(rect(light_color_picker_x, light_color_picker_y, light_color_picker_width, light_color_picker_height), "Light Color", &light_color);
-    g_light_color.red = light_color.r;
-    g_light_color.green = light_color.g;
-    g_light_color.blue = light_color.b;
-    g_light_color.alpha = light_color.a;
+    window->point_lights[0].Color.red = light_color.r;
+    window->point_lights[0].Color.green = light_color.g;
+    window->point_lights[0].Color.blue = light_color.b;
+    window->point_lights[0].Color.alpha = light_color.a;
 
     GuiSlider(
         rect(light_intensity_slider_x, light_intensity_slider_y, light_intensity_slider_width, light_intensity_slider_height),
         "Light Intesity",
-        TextFormat("%2.1f", g_light_intensity),
-        &g_light_intensity,
+        TextFormat("%2.1f", window->point_lights[0].Intensity),
+        &window->point_lights[0].Intensity,
         0.0f, 10000.0f);
+
+    GuiToggleSlider(rect(toggle_active_x, toggle_active_y, toggle_active_width, toggle_active_height), "Light;Camera", &window->is_camera_active);
+
+    GuiSetStyle(STATUSBAR, TEXT_ALIGNMENT, TEXT_ALIGN_RIGHT);
+    const Vector2 mouse_position = raylib_get_normalized_coordinate(GetMousePosition());
+    GuiStatusBar(
+        rect(status_bar_x, status_bar_y, status_bar_width, status_bar_height), 
+        TextFormat("%2.1f, %2.1f", mouse_position.x, mouse_position.y));
 }
 
 static void draw_info()
 {
+    const int padding = 2;
     const uint32_t width = raylib_viewport_width();
     const uint32_t height = raylib_viewport_height();
     DrawFPS(2, GetScreenHeight() - 20);
 
     Vector2 position = {2.0f, 2.0f};
     DrawTextEx(font, TextFormat("Viewport <%dpx, %dpx>", width, height), position, font_size, font_spacing, font_color);
+
+    DrawFPS(position.x, position.y + font_size + padding);
 }

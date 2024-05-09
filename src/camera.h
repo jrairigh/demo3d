@@ -4,11 +4,11 @@
 
 typedef struct MyCamera
 {
+    Vec3 Position;
+    Vec3 LookAt;
     Mat4 MVP;
 } MyCamera;
 
-Vec3 get_camera_position(const MyCamera* camera);
-void update_camera_position(MyCamera* camera, const Vec3 position);
 MyCamera perspective_camera(
     const Vec3 position, 
     const Vec3 look_at, 

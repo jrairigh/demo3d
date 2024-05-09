@@ -75,8 +75,12 @@ void render_lines_to_vanishing_point(Window* window)
 void render(Window* window, const float elapsed_time)
 {
     //render_4_triangles(window);
-    const PointLight light = point_light(g_light_intensity, vec3(g_vec3.x, g_vec3.y, g_vec3.z), g_light_color);
-    add_light_source(window, light);
+    if (window->number_of_lights == 0)
+    {
+        const PointLight light = point_light(10000.0f, vec3(-10.0f, -10.0f, -10.0f), color(255,0,0,255));
+        add_light_source(window, light);
+    }
+
     render_overlapping_triangles(window);
     //render_cube(window, elapsed_time);
     //render_pixels_to_vanishing_point(window);
@@ -86,7 +90,7 @@ void render(Window* window, const float elapsed_time)
     //const float s = g_vec3.y / 10.0f;
     //const float n = g_vec3.z / 10.0f;
     //const Mat4 cube = orthographic_mat4(1.0f, 100.0f, 1.0f, 99.9f, 100.0f, 999.9f);
-    //const Vec3 in = vec3(g_fov, g_near_z, g_far_z);
+    //const Vec3 in = vec3(FOV, NearZ, FarZ);
     //const Vec3 out = mat4_x_vec3(cube, in);
     //char buffer[256] = { 0 };
     //sprintf(&buffer, "<%.1f, %.1f, %.1f>", in.x, in.y, in.z);
@@ -97,7 +101,7 @@ void render(Window* window, const float elapsed_time)
     //draw_overlay_text(window, buffer2, vec2(100.0f, 130.0f), color(0, 255, 0, 100));
 
     //const Mat4 mp = perspective_mat4(4.0f / 3.0f, 60.0f, 1.0f, 999.9f);
-    //const Vec4 in = vec4(g_fov, g_near_z, g_far_z, 1.0f);
+    //const Vec4 in = vec4(FOV, NearZ, FarZ, 1.0f);
     //const Vec4 out = mat4_x_vec4(mp, in);
     //char buffer[256] = { 0 };
     //sprintf(&buffer, "<%.1f, %.1f, %.1f>", in.x, in.y, in.z);
