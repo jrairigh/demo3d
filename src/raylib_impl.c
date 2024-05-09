@@ -15,7 +15,6 @@ static Texture2D texture2d;
 static const float font_size = 18.0f;
 static const float font_spacing = 5.0f;
 static const Color font_color = {0, 228, 48, 255};
-static bool show_fps = false;
 static bool collapse_control_window = false;
 static Color light_color = { 255, 0, 0, 255 };
 
@@ -57,7 +56,6 @@ static Rectangle rect(const float x, const float y, const float width, const flo
     return (Rectangle) { x, y, width, height };
 }
 
-static void draw_info();
 static void draw_controls();
 static void post_processing();
 static void smooth_rendered_image();
@@ -81,15 +79,22 @@ Vector2 raylib_get_normalized_coordinate(const Vector2 position)
     return (Vector2) { nx, ny };
 }
 
+Vector2 raylib_get_screen_coordinates(const Vector2 normalized_coordinates)
+{
+    const float viewport_width = (float)raylib_viewport_width();
+    const float viewport_height = (float)raylib_viewport_height();
+    const float x = roundf(Clamp(Lerp(0.0f, viewport_width, (1.0f + normalized_coordinates.x) * 0.5f), 0.0f, viewport_width));
+    const float y = roundf(Clamp(Lerp(viewport_height, 0.0f, (1.0f + normalized_coordinates.y) * 0.5f), 0.0f, viewport_height));
+    return (Vector2) { x, y };
+}
+
 void raylib_show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
 {
     InitWindow(screen_width, screen_height, title);
 
     // Load global data (assets that must be available in all screens, i.e. font)
     font = LoadFont("resources/mecha.png");
-    //SetTargetFPS(60);
     GuiLoadStyleDark();
-    //SetConfigFlags(FLAG_WINDOW_UNDECORATED);
 
     control_window_height = 1.0f * GetScreenHeight();
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
@@ -102,11 +107,6 @@ void raylib_on_update(Window* window, const float ts)
 {
     (void)ts;
     window->is_open = (int)!WindowShouldClose();
-
-    if (IsKeyPressed(KEY_I))
-    {
-        show_fps = !show_fps;
-    }
 
     window->wasd_key_state[0] = IsKeyPressedRepeat(KEY_W);
     window->wasd_key_state[1] = IsKeyPressedRepeat(KEY_A);
@@ -125,11 +125,6 @@ void raylib_end_draw(Window* window)
     //post_processing();
 
     // Drawing overlays last so viewport window doesn't render graphics overtop of it
-    if (show_fps)
-        draw_info();
-    else
-        DrawTextEx(font, "Show info 'I' key", Vector2Scale(Vector2One(), 2.0f), font_size, font_spacing, font_color);
-
     draw_controls(window);
 
     EndDrawing();
@@ -147,11 +142,8 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
 {
     const float x = normalized_coordinate.x;
     const float y = normalized_coordinate.y;
+    const Vector2 viewport_space = raylib_get_screen_coordinates((Vector2) { x, y });
     const Color c = {color.red, color.green, color.blue, color.alpha};
-    const float viewport_half_width = raylib_viewport_width() / 2.0f;
-    const float viewport_half_height = raylib_viewport_height() / 2.0f;
-    const int viewport_space_x = (int)((x + 1.0f) * viewport_half_width);
-    const int viewport_space_y = (int)((1.0f - y) * viewport_half_height);
 
     // drawing extra pixels to fill in gaps
     //DrawPixel(viewport_space_x - 1, viewport_space_y - 1, c);
@@ -159,7 +151,7 @@ void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
     //DrawPixel(viewport_space_x + 1, viewport_space_y - 1, c);
 
     //DrawPixel(viewport_space_x - 1, viewport_space_y, c);
-    DrawPixel(viewport_space_x, viewport_space_y, c);
+    DrawPixel(viewport_space.x, viewport_space.y, c);
     //DrawPixel(viewport_space_x + 1, viewport_space_y, c);
 
     //DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
@@ -287,22 +279,24 @@ static void draw_controls(Window* window)
         return;
     }
 
+    const uint32_t viewport_width = raylib_viewport_width();
+    const uint32_t viewport_height = raylib_viewport_height();
     const float control_window_x = GetScreenWidth() * (1.0f - control_window_screen_width_percentage);
     const float control_window_y = 0.0f;
 
     const float fov_slider_height = 22.0f;
     const float fov_slider_width = 113.0f;
-    const float fov_slider_x = 639.0f;
+    const float fov_slider_x = 633.0f;
     const float fov_slider_y = 39.0f;
 
     const float near_z_slider_height = 22.0f;
     const float near_z_slider_width = 113.0f;
-    const float near_z_slider_x = 639.0f;
+    const float near_z_slider_x = 633.0f;
     const float near_z_slider_y = 66.0f;
 
     const float far_z_slider_height = 22.0f;
     const float far_z_slider_width = 113.0f;
-    const float far_z_slider_x = 639.0f;
+    const float far_z_slider_x = 633.0f;
     const float far_z_slider_y = 93.0f;
 
     const float x_slider_height = 22.0f;
@@ -322,8 +316,8 @@ static void draw_controls(Window* window)
 
     const float orthographic_mode_checkbox_height = 20.0f;
     const float orthographic_mode_checkbox_width = 20.0f;
-    const float orthographic_mode_checkbox_x = 639.0f;
-    const float orthographic_mode_checkbox_y = 201.0f;
+    const float orthographic_mode_checkbox_x = 602.0f;
+    const float orthographic_mode_checkbox_y = 513.0f;
 
     const float light_color_picker_height = 175.0f;
     const float light_color_picker_width = 175.0f;
@@ -334,6 +328,11 @@ static void draw_controls(Window* window)
     const float light_intensity_slider_width = 50.0f;
     const float light_intensity_slider_x = 687.0f;
     const float light_intensity_slider_y = 435.0f;
+
+    const float light_color_label_height = 22.0f;
+    const float light_color_label_width = 78.0f;
+    const float light_color_label_x = 595.0f;
+    const float light_color_label_y = 221.0f;
 
     const float status_bar_height = 26.0f;
     const float status_bar_width = 800.0f;
@@ -358,7 +357,7 @@ static void draw_controls(Window* window)
 
     GuiCheckBox(
         rect(orthographic_mode_checkbox_x, orthographic_mode_checkbox_y, orthographic_mode_checkbox_width, orthographic_mode_checkbox_height),
-        "Orthographic",
+        "Orthographic Camera",
         (bool*)&window->IsOrthographic);
 
     GuiSlider(
@@ -377,10 +376,11 @@ static void draw_controls(Window* window)
         TextFormat("%2.1f", window->FarZ), 
         &window->FarZ, 100.0f, 10000.0f);
 
-    GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
-    GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
-    GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
+    //GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
+    //GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
+    //GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
 
+    GuiLabel(rect(light_color_label_x, light_color_label_y, light_color_label_width, light_color_label_height), "Light Color");
     GuiColorPicker(rect(light_color_picker_x, light_color_picker_y, light_color_picker_width, light_color_picker_height), "Light Color", &light_color);
     window->point_lights[0].Color.red = light_color.r;
     window->point_lights[0].Color.green = light_color.g;
@@ -397,21 +397,10 @@ static void draw_controls(Window* window)
     GuiToggleSlider(rect(toggle_active_x, toggle_active_y, toggle_active_width, toggle_active_height), "Light;Camera", &window->is_camera_active);
 
     GuiSetStyle(STATUSBAR, TEXT_ALIGNMENT, TEXT_ALIGN_RIGHT);
-    const Vector2 mouse_position = raylib_get_normalized_coordinate(GetMousePosition());
+    const Vector2 mouse_position = GetMousePosition();
+    const Vector2 ndc = raylib_get_normalized_coordinate(mouse_position);
     GuiStatusBar(
         rect(status_bar_x, status_bar_y, status_bar_width, status_bar_height), 
-        TextFormat("%2.1f, %2.1f", mouse_position.x, mouse_position.y));
-}
-
-static void draw_info()
-{
-    const int padding = 2;
-    const uint32_t width = raylib_viewport_width();
-    const uint32_t height = raylib_viewport_height();
-    DrawFPS(2, GetScreenHeight() - 20);
-
-    Vector2 position = {2.0f, 2.0f};
-    DrawTextEx(font, TextFormat("Viewport <%dpx, %dpx>", width, height), position, font_size, font_spacing, font_color);
-
-    DrawFPS(position.x, position.y + font_size + padding);
+        TextFormat("Viewport: %d x %d px     FPS: %d     Coordinate: (%2.2f, %2.2f) (%d, %d)", 
+            (int)viewport_width, (int)viewport_height, GetFPS(), ndc.x, ndc.y, (int)mouse_position.x, (int)mouse_position.y));
 }
