@@ -31,6 +31,7 @@ Vec3 mat3_x_vec3(const Mat3 m, const Vec3 a);
 Vec3 mat4_x_vec3(const Mat4 m, const Vec3 a);
 Vec4 mat4_x_vec4(const Mat4 m, const Vec4 a);
 float vec3_dot_product(const Vec3 a, const Vec3 b);
+Vec2 lerp_vec2(const Vec2 start, const Vec2 end, const float t);
 
 // matrix math
 Mat3 rotate_y_axis(const float angle);

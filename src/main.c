@@ -20,14 +20,11 @@ void render_4_triangles(Window* window)
 
 void render_overlapping_triangles(Window* window)
 {
-    //const float k = fabsf(g_vec3.x) / 500.0f;
-    //const float s = g_vec3.y * 0.1f;
-    //const float n = g_vec3.z * 0.1f;
     Triangle t[4] = {
-        triangle(vec3(-50.0f, 50.0f, 100.0f), vec3(0.0f, 50.0f, 100.0f), vec3(-50.0f, -50.0f, 100.0f), color(0, 0, 0, 255)),
-        triangle(vec3(-50.0f, 50.0f, 150.0f), vec3(0.0f, 50.0f, 150.0f), vec3(-50.0f, -50.0f, 150.0f), color(0, 0, 0, 255)),
-        triangle(vec3(-50.0f, 50.0f, 250.0f), vec3(0.0f, 50.0f, 250.0f), vec3(-50.0f, -50.0f, 250.0f), color(0, 0, 0, 255)),
-        triangle(vec3(-50.0f, 50.0f, 400.0f), vec3(0.0f, 50.0f, 400.0f), vec3(-50.0f, -50.0f, 400.0f), color(0, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 100.0f), vec3(0.0f, 50.0f, 100.0f), vec3(-50.0f, -50.0f, 100.0f), color(250, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 150.0f), vec3(0.0f, 50.0f, 150.0f), vec3(-50.0f, -50.0f, 150.0f), color(250, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 250.0f), vec3(0.0f, 50.0f, 250.0f), vec3(-50.0f, -50.0f, 250.0f), color(250, 0, 0, 255)),
+        triangle(vec3(-50.0f, 50.0f, 400.0f), vec3(0.0f, 50.0f, 400.0f), vec3(-50.0f, -50.0f, 400.0f), color(250, 0, 0, 255)),
     };
 
     draw_triangles(window, t, _countof(t));
@@ -35,10 +32,7 @@ void render_overlapping_triangles(Window* window)
 
 void render_cube(Window* window, const float ts)
 {
-    const float angle = lerpf(-180.0f, 180.0f, (500.0f + g_vec3.x) / 1000.0f);
-    const float y = lerpf(-1000.0f, 1000.0f, (500.0f + g_vec3.y) / 1000.0f);
-    const float z = lerpf(500.0f, 3000.0f, (500.0f + g_vec3.z) / 1000.0f);
-    draw_wireframe_box(window, 200.0f, 800.0f, 400.0f, angle, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
+    draw_wireframe_box(window, 8.0f, 8.0f, 8.0f, 0.0f, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
 }
 
 void render_pixels_to_vanishing_point(Window* window)
@@ -74,14 +68,23 @@ void render_lines_to_vanishing_point(Window* window)
 
 void render(Window* window, const float elapsed_time)
 {
-    //render_4_triangles(window);
     if (window->number_of_lights == 0)
     {
         const PointLight light = point_light(10000.0f, vec3(-10.0f, -10.0f, -10.0f), color(255,0,0,255));
         add_light_source(window, light);
     }
-
-    render_overlapping_triangles(window);
+    
+    //render_4_triangles(window);
+    //render_overlapping_triangles(window);
+    draw_cube(window, origin, vec3(100.0f, 100.0f, 100.0f), color(0, 255, 0, 255));
+    draw_grid(window, -10.0f, 10.0f, 10.0f, 10, 10, color(80, 80, 80, 255));
+    //Vec3 cam_position = window->camera.Position;
+    //Vec3 cam_lookat = window->camera.LookAt;
+    //char str1[32] = { 0 }, str2[32] = { 0 };
+    //sprintf(str1, "(%0.2f,%0.2f,%0.2f)", cam_position.x, cam_position.y, cam_position.z);
+    //sprintf(str2, "(%0.2f,%0.2f,%0.2f)", cam_lookat.x, cam_lookat.y, cam_lookat.z);
+    //draw_overlay_text(window, str1, vec2(20.0, 50.0), color(0, 255, 0, 255));
+    //draw_overlay_text(window, str2, vec2(20.0, 70.0), color(0, 255, 0, 255));
     //render_cube(window, elapsed_time);
     //render_pixels_to_vanishing_point(window);
     //render_lines_to_vanishing_point(window);

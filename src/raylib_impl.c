@@ -369,16 +369,16 @@ static void draw_controls(Window* window)
         rect(near_z_slider_x, near_z_slider_y, near_z_slider_width, near_z_slider_height), 
         "Near Z", 
         TextFormat("%2.1f", window->NearZ), 
-        &window->NearZ, 1, 99.9f);
+        &window->NearZ, 0.1f, 99.9f);
     GuiSlider(
         rect(far_z_slider_x, far_z_slider_y, far_z_slider_width, far_z_slider_height), 
         "Far Z", 
         TextFormat("%2.1f", window->FarZ), 
         &window->FarZ, 100.0f, 10000.0f);
 
-    //GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
-    //GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
-    //GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
+    GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
+    GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
+    GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
 
     GuiLabel(rect(light_color_label_x, light_color_label_y, light_color_label_width, light_color_label_height), "Light Color");
     GuiColorPicker(rect(light_color_picker_x, light_color_picker_y, light_color_picker_width, light_color_picker_height), "Light Color", &light_color);
@@ -396,11 +396,15 @@ static void draw_controls(Window* window)
 
     GuiToggleSlider(rect(toggle_active_x, toggle_active_y, toggle_active_width, toggle_active_height), "Light;Camera", &window->is_camera_active);
 
-    GuiSetStyle(STATUSBAR, TEXT_ALIGNMENT, TEXT_ALIGN_RIGHT);
+    GuiSetStyle(STATUSBAR, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
     const Vector2 mouse_position = GetMousePosition();
     const Vector2 ndc = raylib_get_normalized_coordinate(mouse_position);
     GuiStatusBar(
-        rect(status_bar_x, status_bar_y, status_bar_width, status_bar_height), 
-        TextFormat("Viewport: %d x %d px     FPS: %d     Coordinate: (%2.2f, %2.2f) (%d, %d)", 
-            (int)viewport_width, (int)viewport_height, GetFPS(), ndc.x, ndc.y, (int)mouse_position.x, (int)mouse_position.y));
+        rect(status_bar_x, status_bar_y, status_bar_width, status_bar_height),
+        TextFormat("Viewport: %d x %d   FPS: %d   Mouse: (%4.2f, %-2.2f) (%d, %d)   World: (%2.f, %2.f, %2.f)   Facing: (%2.f, %2.f, %2.f)",
+            (int)viewport_width, (int)viewport_height,
+            GetFPS(),
+            ndc.x, ndc.y, (int)mouse_position.x, (int)mouse_position.y,
+            window->camera.Position.x, window->camera.Position.y, window->camera.Position.z,
+            window->camera.LookAt.x, window->camera.LookAt.y, window->camera.LookAt.z));
 }

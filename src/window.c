@@ -15,7 +15,7 @@ enum WASD_Keys
     D_KEY
 };
 
-Vec3 g_vec3 = { 1.0f, 1.0f, 1.0f };
+Vec3 g_vec3 = { 0.0f, 0.0f, 1.0f };
 
 Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
 {
@@ -49,6 +49,9 @@ void update_camera_position(Window* window)
     window->camera.Position = updated_camera_position;
     // look towards the origin of world
     window->camera.LookAt = normalized(scalar_x_vec3(-1.0f, updated_camera_position));
+    //const float x = lerpf(-pi, pi, (g_vec3.x + 500.0f) / 1000.0f);
+    //const float z = lerpf(-pi, pi, (g_vec3.z + 500.0f) / 1000.0f);
+    //window->camera.LookAt = normalized(vec3(x, 0.0f, z));
 }
 
 void update_light_position(Window* window)
@@ -99,7 +102,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->number_of_lights = 0;
     window->IsOrthographic = false;
     window->FOV = 90.0f;
-    window->NearZ = 1.0f;
+    window->NearZ = 60.0f;
     window->FarZ = 10000.0f;
 
     const uint32_t viewport_width = window->get_viewport_width();
@@ -152,6 +155,13 @@ void close_window(Window** window_ptr)
     free(w->z_buffer);
     free(w);
     *window_ptr = NULL;
+}
+
+void add_light_source(Window* window, const PointLight light)
+{
+    const uint32_t index = window->number_of_lights;
+    window->point_lights[index] = light;
+    window->number_of_lights++;
 }
 
 void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
@@ -215,7 +225,62 @@ void draw_triangles(Window* window, const Triangles triangle, const uint32_t tri
 
 void draw_triangle(Window* window, const Triangle triangle)
 {
-    MyColor c = triangle.color;
+    // transform by view matrix
+    const Vec4 p0 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p0, 1.0f));
+    const Vec4 p1 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p1, 1.0f));
+    const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p2, 1.0f));
+
+    if (p0.w * p1.w * p2.w == 0.0f)
+    {
+        printf("w is zero\n");
+        return;
+    }
+
+    // scale by w
+    const Vec4 p0_ = scalar_x_vec4((1.0f / p0.w), p0);
+    const Vec4 p1_ = scalar_x_vec4((1.0f / p1.w), p1);
+    const Vec4 p2_ = scalar_x_vec4((1.0f / p2.w), p2);
+
+    // cull
+    const bool inside_view = is_within_canonical_view_volume(p0_.x, p0_.y, p0_.z) &&
+        is_within_canonical_view_volume(p1_.x, p1_.y, p1_.z) &&
+        is_within_canonical_view_volume(p2_.x, p2_.y, p2_.z);
+    if (!inside_view)
+        return;
+
+    // test within triangle and not occluded by something in front
+    //const float z = is_within_triangle(device_coordinate,
+    //    vec3(p0_.x, p0_.y, p0_.z),
+    //    vec3(p1_.x, p1_.y, p1_.z),
+    //    vec3(p2_.x, p2_.y, p2_.z));
+    //if (z < 0.0f || z > window->z_buffer[i * viewport_width + j])
+    //    return;
+
+    //window->z_buffer[i * viewport_width + j] = z;
+
+    const float min_iterations = 120.0f;
+    const float min_z = fmaxf(0.1f, fminf(fminf(p0_.z, p1_.z), p2_.z));
+    const Vec2 p0_vec2 = vec2(p0_.x, p0_.y);
+    const Vec2 p1_vec2 = vec2(p1_.x, p1_.y);
+    const Vec2 p2_vec2 = vec2(p2_.x, p2_.y);
+    const int iterations = (int)(min_iterations / min_z);
+    for (int i = 0; i < iterations; ++i)
+    {
+        const float t = (float)i / (float)iterations;
+        const Vec2 start = lerp_vec2(p0_vec2, p1_vec2, t);
+        const Vec2 end = lerp_vec2(p0_vec2, p2_vec2, t);
+
+        const MyColor pixel_color = window->number_of_lights == 1
+            ? color_at_position(window->point_lights[0], vec3(p0.x, p0.y, p0.z))
+            : triangle.color;
+
+        window->draw_line(start, end, pixel_color);
+    }
+}
+
+/*
+void draw_triangle(Window* window, const Triangle triangle)
+{
     const uint32_t viewport_height = window->get_viewport_height();
     const uint32_t viewport_width = window->get_viewport_width();
     for (uint32_t i = 0; i < viewport_height; ++i)
@@ -264,6 +329,7 @@ void draw_triangle(Window* window, const Triangle triangle)
         }
     }
 }
+*/
 
 void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color)
 {
@@ -326,9 +392,118 @@ void draw_wireframe_box(Window* window, const float width, const float height, c
     draw_line(window, c_, f_, color);
 }
 
-void add_light_source(Window* window, const PointLight light)
+void draw_grid(Window* window, const float y, const float cell_width, const float cell_height, const uint32_t rows, const uint32_t columns, const MyColor color)
 {
-    const uint32_t index = window->number_of_lights;
-    window->point_lights[index] = light;
-    window->number_of_lights++;
+    const float grid_width = cell_width * (float)columns;
+    const float grid_height = cell_height * (float)rows;
+    const float half_grid_width = grid_width * 0.5f;
+    const float half_grid_height = grid_height * 0.5f;
+
+    for (uint32_t i = 0; i <= columns; ++i)
+    {
+        const float z = i * cell_height - half_grid_height;
+        const Vec3 start = vec3(-half_grid_width, y, z);
+        const Vec3 end = vec3(half_grid_height, y, z);
+        draw_line(window, start, end, color);
+    }
+
+    for (uint32_t i = 0; i <= rows; ++i)
+    {
+        const float x = i * cell_width - half_grid_width;
+        const Vec3 start = vec3(x, y, -half_grid_height);
+        const Vec3 end = vec3(x, y, half_grid_height);
+        draw_line(window, start, end, color);
+    }
+
+    draw_line(window, vec3(0.0f, -10.0f, 0.0f), vec3(0.0f, 10.0f, 0.0f), color);
+}
+
+void draw_cube(Window* window, const Vec3 position, const Vec3 scale, const MyColor cube_color)
+{
+    const Vec3 half_scale = scalar_x_vec3(0.5f, scale);
+
+    // Naming convention based on camera facing down positive z axis and front is the part camera is facing
+    const Triangle back_face_tri_1 = triangle(
+        vec3(-half_scale.x, -half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, half_scale.y, -half_scale.z),
+        vec3(half_scale.x, half_scale.y, -half_scale.z),
+        cube_color
+    );
+    const Triangle back_face_tri_2 = triangle(
+        vec3(half_scale.x, half_scale.y, -half_scale.z),
+        vec3(half_scale.x, -half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, -half_scale.y, -half_scale.z),
+        cube_color
+    );
+    const Triangle front_face_tri_1 = triangle(
+        vec3(-half_scale.x, -half_scale.y, half_scale.z),
+        vec3(-half_scale.x, half_scale.y, half_scale.z),
+        vec3(half_scale.x, half_scale.y, half_scale.z),
+        cube_color
+    );
+    const Triangle front_face_tri_2 = triangle(
+        vec3(half_scale.x, half_scale.y, half_scale.z),
+        vec3(half_scale.x, -half_scale.y, half_scale.z),
+        vec3(-half_scale.x, -half_scale.y, half_scale.z),
+        cube_color
+    );
+    const Triangle bottom_face_tri_1 = triangle(
+        vec3(-half_scale.x, -half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, -half_scale.y, half_scale.z),
+        vec3(half_scale.x, -half_scale.y, half_scale.z),
+        cube_color
+    );
+    const Triangle bottom_face_tri_2 = triangle(
+        vec3(half_scale.x, -half_scale.y, half_scale.z),
+        vec3(half_scale.x, -half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, -half_scale.y, -half_scale.z),
+        cube_color
+    );
+    const Triangle top_face_tri_1 = triangle(
+        vec3(-half_scale.x, half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, half_scale.y, half_scale.z),
+        vec3(half_scale.x, half_scale.y, half_scale.z),
+        cube_color
+    );
+    const Triangle top_face_tri_2 = triangle(
+        vec3(half_scale.x, half_scale.y, half_scale.z),
+        vec3(half_scale.x, half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, half_scale.y, -half_scale.z),
+        cube_color
+    );
+    const Triangle left_face_tri_1 = triangle(
+        vec3(-half_scale.x, -half_scale.y, half_scale.z),
+        vec3(-half_scale.x, half_scale.y, half_scale.z),
+        vec3(-half_scale.x, half_scale.y, -half_scale.z),
+        cube_color
+    );
+    const Triangle left_face_tri_2 = triangle(
+        vec3(-half_scale.x, half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, -half_scale.y, -half_scale.z),
+        vec3(-half_scale.x, -half_scale.y, half_scale.z),
+        cube_color
+    );
+    const Triangle right_face_tri_1 = triangle(
+        vec3(half_scale.x, -half_scale.y, -half_scale.z),
+        vec3(half_scale.x, half_scale.y, -half_scale.z),
+        vec3(half_scale.x, half_scale.y, half_scale.z),
+        cube_color
+    );
+    const Triangle right_face_tri_2 = triangle(
+        vec3(half_scale.x, half_scale.y, half_scale.z),
+        vec3(half_scale.x, -half_scale.y, half_scale.z),
+        vec3(half_scale.x, -half_scale.y, -half_scale.z),
+        cube_color
+    );
+
+    const Triangle triangle[12] = {
+        front_face_tri_1, front_face_tri_2,
+        back_face_tri_1, back_face_tri_2,
+        bottom_face_tri_1, bottom_face_tri_2,
+        top_face_tri_1, top_face_tri_2,
+        left_face_tri_1, left_face_tri_2,
+        right_face_tri_1, right_face_tri_2,
+    };
+
+    draw_triangles(window, triangle, _countof(triangle));
 }

@@ -78,6 +78,7 @@ Mat4 mat4(
     const float v20, const float v21, const float v22, const float v23, 
     const float v30, const float v31, const float v32, const float v33);
 
+extern const Vec3 origin;
 extern const Vec3 x_axis;
 extern const Vec3 y_axis;
 extern const Vec3 z_axis;

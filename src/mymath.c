@@ -168,6 +168,13 @@ float vec3_dot_product(const Vec3 a, const Vec3 b)
     return x + y + z;
 }
 
+Vec2 lerp_vec2(const Vec2 start, const Vec2 end, const float t)
+{
+    const float x = lerpf(start.x, end.x, t);
+    const float y = lerpf(start.y, end.y, t);
+    return vec2(x, y);
+}
+
 Vec3 mat3_x_vec3(const Mat3 m, const Vec3 a)
 {
     return vec3(

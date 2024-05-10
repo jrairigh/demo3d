@@ -1,5 +1,6 @@
 #include "types.h"
 
+const Vec3 origin = { 0.0f, 0.0f, 0.0f };
 const Vec3 x_axis = { 1.0f, 0.0f, 0.0f };
 const Vec3 y_axis = { 0.0f, 1.0f, 0.0f };
 const Vec3 z_axis = { 0.0f, 0.0f, 1.0f };

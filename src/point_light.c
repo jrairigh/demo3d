@@ -20,6 +20,6 @@ MyColor color_at_position(const PointLight light, const Vec3 position)
     const uint8_t dest_red = (uint8_t)lerpf(0.0f, 255.0f, attenuated_color.x);
     const uint8_t dest_green = (uint8_t)lerpf(0.0f, 255.0f, attenuated_color.y);
     const uint8_t dest_blue = (uint8_t)lerpf(0.0f, 255.0f, attenuated_color.z);
-    const uint8_t dest_alpha = (uint8_t)lerpf(0.0f, 255.0f, attenuated_color.w);
+    const uint8_t dest_alpha = 255.0f;
     return color(dest_red, dest_green, dest_blue, dest_alpha);
 }

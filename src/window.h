@@ -49,5 +49,7 @@ void draw_triangle(Window* window, const Triangle triangle);
 void draw_triangles(Window* window, const Triangles triangles, const uint32_t triangle_count);
 void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color);
 void draw_wireframe_box(Window* window, const float width, const float height, const float depth, const float angle, const Vec3 position, const MyColor color);
+void draw_grid(Window* window, const float y, const float cell_width, const float cell_height, const uint32_t rows, const uint32_t columns, const MyColor color);
+void draw_cube(Window* window, const Vec3 position, const Vec3 scale, const MyColor color);
 
 void add_light_source(Window* window, const PointLight light);

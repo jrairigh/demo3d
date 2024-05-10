@@ -18,13 +18,15 @@ MyCamera perspective_camera(
     assert(vec3_magnitude(look_at) - 1.0f < 0.0001f);
 
     //const Vec3 n = cross_product(look_at, up);
-    const float dot_product = vec3_dot_product(look_at, z_axis);
-    const float angle = acosf(dot_product);
+    const Vec3 a = cross_product(z_axis, look_at);
+    const float z = a.y;
+    const float angle = asinf(z);
+    const float x = cosf(angle);
     const Mat4 model_view_matrix = mat4(
-        cosf(angle), 0.0f, -sinf(angle), -position.x,
-        0.0f,        1.0f,        0.0f,  -position.y,
-        sinf(angle), 0.0f, cosf(angle),  -position.z,
-        0.0f,        0.0f,        0.0f,         1.0f
+        x,    0.0f,    z, -position.x,
+        0.0f, 1.0f, 0.0f, -position.y,
+        z,    0.0f,   -x, -position.z,
+        0.0f, 0.0f, 0.0f, 1.0f
     );
 
     MyCamera camera;
