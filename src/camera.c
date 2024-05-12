@@ -17,15 +17,13 @@ MyCamera perspective_camera(
     // assume look at direction is normalized
     assert(vec3_magnitude(look_at) - 1.0f < 0.0001f);
 
-    //const Vec3 n = cross_product(look_at, up);
-    const Vec3 a = cross_product(z_axis, look_at);
-    const float z = a.y;
-    const float angle = asinf(z);
-    const float x = cosf(angle);
+    const Vec3 normal = cross_product(z_axis, look_at);
+    const float z = normal.y;
+    const float x = cosf(asinf(z));
     const Mat4 model_view_matrix = mat4(
-        x,    0.0f,    z, -position.x,
+        x,    0.0f, z,    -position.x,
         0.0f, 1.0f, 0.0f, -position.y,
-        z,    0.0f,   -x, -position.z,
+        -z,   0.0f, x,    -position.z,
         0.0f, 0.0f, 0.0f, 1.0f
     );
 

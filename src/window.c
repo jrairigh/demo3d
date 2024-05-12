@@ -7,15 +7,28 @@
 #include <stdio.h>
 #include <string.h>
 
+/*TODO
+* 1. Try cross hatching the triangle lines to fill the triangles
+* 2. Allow light to affect each pixel of the triangle
+* 3. In camera mode, draw circle to indicate roughly where light is.
+* 4. In light mode, set camera position to light position and move the light with WASD keys.
+* 5. Clipping
+* 6. Culling backfaces
+* 7. Z buffer
+* 8. Camera should face whatever the look at direction is.
+*/
+
 enum WASD_Keys
 {
-    W_KEY, 
+    W_KEY,
     A_KEY,
     S_KEY,
     D_KEY
 };
 
 Vec3 g_vec3 = { 0.0f, 0.0f, 1.0f };
+
+static void post_render(Window* window);
 
 Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
 {
@@ -26,7 +39,7 @@ Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
     return vec2(nx, ny);
 }
 
-Vec3 get_position_update_from_input(const Window* window, const Vec3 start, const float speed)
+Vec3 get_position_update_from_input(const Window* window, const Vec3 start, const Vec3 look_at, const float elapsed_seconds)
 {
     const bool w_key_down = window->wasd_key_state[W_KEY];
     const bool a_key_down = window->wasd_key_state[A_KEY];
@@ -35,29 +48,40 @@ Vec3 get_position_update_from_input(const Window* window, const Vec3 start, cons
     if (!w_key_down && !a_key_down && !s_key_down && !d_key_down)
         return start;
 
-    float z = ((int)window->wasd_key_state[W_KEY]) * speed;
-    z += ((int)window->wasd_key_state[S_KEY]) * -1.0f * speed;
-    float x = ((int)window->wasd_key_state[D_KEY]) * speed;
-    x += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed;
-    return vec3(start.x + x, start.y, start.z + z);
+    const float speed = window->CameraSpeed;
+    float dz = ((int)window->wasd_key_state[W_KEY]) * speed * elapsed_seconds;
+    dz += ((int)window->wasd_key_state[S_KEY]) * -1.0f * speed * elapsed_seconds;
+    float dx = ((int)window->wasd_key_state[D_KEY]) * speed * elapsed_seconds;
+    dx += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed * elapsed_seconds;
+
+    const Vec3 right = cross_product(look_at, y_axis);
+    const Vec3 strafe = scalar_x_vec3(dx, right);
+    const Vec3 zoom = scalar_x_vec3(dz, look_at);
+    //return vec3_add_vec3(start, vec3_add_vec3(strafe, zoom));
+    return vec3(start.x + dx, 0.0f, start.z + dz);
 }
 
-void update_camera_position(Window* window)
+void update_camera_position(Window* window, const float elapsed_seconds)
 {
     const Vec3 camera_position = window->camera.Position;
-    const Vec3 updated_camera_position = get_position_update_from_input(window, camera_position, 10.0f);
+    const Vec3 camera_look_at = window->camera.LookAt;
+    const Vec3 updated_camera_position = get_position_update_from_input(window, camera_position, camera_look_at, elapsed_seconds);
     window->camera.Position = updated_camera_position;
+
+    if (updated_camera_position.x == 0.0f && updated_camera_position.y == 0.0f && updated_camera_position.z == 0.0f)
+        return;
+
     // look towards the origin of world
     window->camera.LookAt = normalized(scalar_x_vec3(-1.0f, updated_camera_position));
-    //const float x = lerpf(-pi, pi, (g_vec3.x + 500.0f) / 1000.0f);
-    //const float z = lerpf(-pi, pi, (g_vec3.z + 500.0f) / 1000.0f);
+    //const float x = lerpf(-1.0f, 1.0f, (g_vec3.x + 500.0f) / 1000.0f);
+    //const float z = lerpf(-1.0f, 1.0f, (g_vec3.z + 500.0f) / 1000.0f);
     //window->camera.LookAt = normalized(vec3(x, 0.0f, z));
 }
 
-void update_light_position(Window* window)
+void update_light_position(Window* window, const float elapsed_seconds)
 {
     const Vec3 light_position = window->point_lights[0].Position;
-    const Vec3 updated_light_position = get_position_update_from_input(window, light_position, 10.0f);
+    const Vec3 updated_light_position = get_position_update_from_input(window, light_position, z_axis, elapsed_seconds);
     window->point_lights[0].Position = updated_light_position;
 }
 
@@ -70,11 +94,13 @@ Window* create_window_impl()
     window->on_update = raylib_on_update;
     window->draw_pixel = raylib_draw_pixel;
     window->draw_line = raylib_draw_line;
+    window->draw_light_widget = raylib_light_widget;
     window->draw_overlay_text = raylib_draw_overlay_text;
     window->close_window = raylib_close_window;
     window->show = raylib_show;
     window->get_viewport_width = raylib_viewport_width;
     window->get_viewport_height = raylib_viewport_height;
+    window->get_frame_elapsed_seconds = raylib_get_frame_elapsed_seconds;
     return window;
 }
 
@@ -104,6 +130,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->FOV = 90.0f;
     window->NearZ = 60.0f;
     window->FarZ = 10000.0f;
+    window->CameraSpeed = 100.0f;
 
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
@@ -119,33 +146,65 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     return window;
 }
 
+void on_update(Window* window, const float elapsed_seconds)
+{
+    static bool is_camera_position_restored;
+    static Vec3 old_camera_position;
+    window->on_update(window, elapsed_seconds);
+    clear_z_buffer(window);
+
+    const float viewport_width = (float)window->get_viewport_width();
+    const float viewport_height = (float)window->get_viewport_height();
+    const float aspect_ratio = viewport_width / viewport_height;
+    const float x = fabsf(g_vec3.x);
+    const float y = fabsf(g_vec3.y);
+    const float z = fabsf(g_vec3.z);
+
+    if (window->is_camera_active && is_camera_position_restored == false)
+    {
+        is_camera_position_restored = true;
+        window->camera.Position = old_camera_position;
+    }
+
+    Vec3 camera_position;
+    if (window->is_camera_active)
+    {
+        update_camera_position(window, elapsed_seconds);
+        camera_position = window->camera.Position;
+        old_camera_position = window->camera.Position;
+    }
+    else
+    {
+        is_camera_position_restored = false;
+        camera_position = window->point_lights[0].Position;
+        update_light_position(window, elapsed_seconds);
+    }
+
+    const Vec3 camera_up = y_axis;
+    window->camera = window->IsOrthographic
+        ? orthographic_camera(camera_position, -x, x, -y, y, -z, z)
+        : perspective_camera(camera_position, window->camera.LookAt, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
+}
+
 void update(Window* window)
 {
-    const Vec3 camera_up = y_axis;
-    const float elapsed_time = 0.16667f;
     while (window->is_open)
     {
-        window->on_update(window, elapsed_time);
-        clear_z_buffer(window);
-
-        const float viewport_width = (float)window->get_viewport_width();
-        const float viewport_height = (float)window->get_viewport_height();
-        const float aspect_ratio = viewport_width / viewport_height;
-        const float x = fabsf(g_vec3.x);
-        const float y = fabsf(g_vec3.y);
-        const float z = fabsf(g_vec3.z);
-
-        window->is_camera_active ? update_camera_position(window) : update_light_position(window);
-
-        window->camera = window->IsOrthographic
-            ? orthographic_camera(window->camera.Position, -x, x, -y, y, -z, z)
-            : perspective_camera(window->camera.Position, window->camera.LookAt, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
-
+        on_update(window, window->get_frame_elapsed_seconds());
         window->pre_render();
-        render(window, elapsed_time);
-        window->render();
-        window->post_render(window);
+        render(window);
+        post_render(window);
     }
+}
+
+void post_render(Window* window)
+{
+    //window->render();
+
+    if (window->number_of_lights == 1)
+        draw_light_widget(window, window->point_lights[0].Position, 1000.0f, color(255, 255, 0, 255));
+
+    window->post_render(window);
 }
 
 void close_window(Window** window_ptr)
@@ -169,7 +228,6 @@ void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
     const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec4(p1.x, p1.y, p1.z, 1.0f));
     if (p2.w == 0.0f)
     {
-        printf("w is zero\n");
         return;
     }
 
@@ -194,7 +252,6 @@ void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor c
 
     if (p0.w == 0.0f || p1.w == 0.0f)
     {
-        printf("w is zero\n");
         return;
     }
 
@@ -232,7 +289,6 @@ void draw_triangle(Window* window, const Triangle triangle)
 
     if (p0.w * p1.w * p2.w == 0.0f)
     {
-        printf("w is zero\n");
         return;
     }
 
@@ -267,14 +323,17 @@ void draw_triangle(Window* window, const Triangle triangle)
     for (int i = 0; i < iterations; ++i)
     {
         const float t = (float)i / (float)iterations;
-        const Vec2 start = lerp_vec2(p0_vec2, p1_vec2, t);
-        const Vec2 end = lerp_vec2(p0_vec2, p2_vec2, t);
+        const Vec2 start_1 = lerp_vec2(p0_vec2, p1_vec2, t);
+        const Vec2 end_1 = lerp_vec2(p0_vec2, p2_vec2, t);
+        //const Vec2 start_2 = lerp_vec2(p1_vec2, p0_vec2, t);
+        //const Vec2 end_2 = lerp_vec2(p1_vec2, p2_vec2, t);
 
         const MyColor pixel_color = window->number_of_lights == 1
-            ? color_at_position(window->point_lights[0], vec3(p0.x, p0.y, p0.z))
+            ? color_at_position(window->point_lights[0], vec3(start_1.x, start_1.y, p0.z))
             : triangle.color;
 
-        window->draw_line(start, end, pixel_color);
+        window->draw_line(start_1, end_1, pixel_color);
+        //window->draw_line(start_2, end_2, pixel_color);
     }
 }
 
@@ -296,7 +355,6 @@ void draw_triangle(Window* window, const Triangle triangle)
 
             if (p0.w * p1.w * p2.w == 0.0f)
             {
-                printf("w is zero\n");
                 continue;
             }
 
@@ -336,11 +394,11 @@ void draw_overlay_text(Window* window, const char* text, const Vec2 position, co
     window->draw_overlay_text(text, position, color);
 }
 
-void draw_wireframe_box(Window* window, const float width, const float height, const float depth, const float angle, const Vec3 position, const MyColor color)
+void draw_wireframe_box(Window* window, const Vec3 scale, const float angle, const Vec3 position, const MyColor color)
 {
-    const float x = width * 0.5f;
-    const float y = height * 0.5f;
-    const float z = depth * 0.5f;
+    const float x = scale.x * 0.5f;
+    const float y = scale.y * 0.5f;
+    const float z = scale.z * 0.5f;
 
     // box corners
     const Vec3 a = vec3(-x, y, -z);
@@ -506,4 +564,22 @@ void draw_cube(Window* window, const Vec3 position, const Vec3 scale, const MyCo
     };
 
     draw_triangles(window, triangle, _countof(triangle));
+}
+
+void draw_light_widget(Window* window, const Vec3 center, const float radius, const MyColor color)
+{
+    const Vec4 center_transformed = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(center, 1.0f));
+    const Vec4 normalized_center = scalar_x_vec4((1.0f / center_transformed.w), center_transformed);
+    const float min_distance = 0.1f;
+    const Vec3 camera_to_center = vec3_minus_vec3(center, window->camera.Position);
+
+    // don't draw if camera isn't facing it
+    if (vec3_dot_product(window->camera.LookAt, normalized(camera_to_center)) < 0.0f)
+        return;
+
+    const float distance = fmaxf(min_distance, vec3_magnitude(camera_to_center));
+    //char buffer[32] = { 0 };
+    //sprintf(buffer, "distance = %f", distance);
+    //window->draw_overlay_text(buffer, vec2(20.f, 20.0f), color);
+    window->draw_light_widget(vec2(normalized_center.x, normalized_center.y), radius / distance, color);
 }

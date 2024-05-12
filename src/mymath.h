@@ -15,7 +15,7 @@ MyColor lerp_color(const MyColor a, const MyColor b, const float t);
 
 // vector math
 Vec3 normalized(const Vec3 a);
-Vec3 cross_product(const Vec3 a, const Vec3 b);
+Vec3 cross_product(const Vec3 from, const Vec3 to);
 Vec4 vec3_to_vec4(const Vec3 v, float w);
 bool is_inside_triangle(const Vec2 v, const Vec2 p0, const Vec2 p1, const Vec2 p2);
 float is_within_triangle(const Vec2 v, const Vec3 p0, const Vec3 p1, const Vec3 p2);
@@ -44,9 +44,12 @@ Mat4 orthographic_mat4(
     const float near_plane, 
     const float far_plane);
 Mat4 identity_mat4();
+Mat3 mat3_x_mat3(const Mat3 m1, const Mat3 m2);
 Mat4 mat4_x_mat4(const Mat4 m1, const Mat4 m2);
 Mat4 translation_mat4(const Vec3 v);
 Mat4 mat4_add_mat4(const Mat4 m1, const Mat4 m2);
+Mat3 inverse_mat3(const Mat3 m);
+float determinant_mat3(const Mat3 m);
 
 // other
 bool is_within_canonical_view_volume(const float x, const float y, const float z);

@@ -131,18 +131,16 @@ bool is_within_canonical_view_volume(const float x, const float y, const float z
         (0.0f <= z && z <= 1.0f);
 }
 
-Vec3 cross_product(const Vec3 a, const Vec3 b)
+Vec3 cross_product(const Vec3 from, const Vec3 to)
 {
-    /*
-    | i  j  k  |
-    | ax ay az |
-    | bx by bz |
-    */
-    return vec3(
-        a.y * b.z - a.z * b.y,
-        a.z * b.x - a.x * b.z,
-        a.x * b.y - a.y * b.x
-    );
+    // Right handed coordinate system
+    // k x j = i
+    // i x k = j
+    // j x i = k
+    const float x = from.z * to.y - from.y * to.z;
+    const float y = from.x * to.z - from.z * to.x;
+    const float z = from.y * to.x - from.x * to.y;
+    return vec3(x, y, z);
 }
 
 Vec4 vec3_to_vec4(const Vec3 v, float w)
@@ -256,6 +254,33 @@ Mat4 identity_mat4()
         0.0f, 0.0f, 0.0f, 1.0f);
 }
 
+Mat3 mat3_x_mat3(const Mat3 m, const Mat3 n)
+{
+    /*
+             m      x          n
+    | m00 m01 m02 |   | n00 n01 n02 |
+    | m10 m11 m12 |   | n10 n11 n12 |
+    | m20 m21 m22 |   | n20 n21 n22 |
+    */
+    float v00 = roundf((m.v00 * n.v00) + (m.v01 * n.v10) + (m.v02 * n.v20));
+    float v01 = roundf((m.v00 * n.v01) + (m.v01 * n.v11) + (m.v02 * n.v21));
+    float v02 = roundf((m.v00 * n.v02) + (m.v01 * n.v12) + (m.v02 * n.v22));
+
+    float v10 = roundf((m.v10 * n.v00) + (m.v11 * n.v10) + (m.v12 * n.v20));
+    float v11 = roundf((m.v10 * n.v01) + (m.v11 * n.v11) + (m.v12 * n.v21));
+    float v12 = roundf((m.v10 * n.v02) + (m.v11 * n.v12) + (m.v12 * n.v22));
+
+    float v20 = roundf((m.v20 * n.v00) + (m.v21 * n.v10) + (m.v22 * n.v20));
+    float v21 = roundf((m.v20 * n.v01) + (m.v21 * n.v11) + (m.v22 * n.v21));
+    float v22 = roundf((m.v20 * n.v02) + (m.v21 * n.v12) + (m.v22 * n.v22));
+
+    return mat3(
+        v00, v01, v02,
+        v10, v11, v12,
+        v20, v21, v22
+    );
+}
+
 Mat4 mat4_x_mat4(const Mat4 m, const Mat4 n)
 {
     /*
@@ -290,6 +315,35 @@ Mat4 mat4_x_mat4(const Mat4 m, const Mat4 n)
         v10, v11, v12, v13,
         v20, v21, v22, v23,
         v30, v31, v32, v33
+    );
+}
+
+float determinant_mat3(const Mat3 m)
+{
+    /* x  y  z
+    | 00 01 02 |
+    | 10 11 12 |
+    | 20 21 22 |
+    */
+    const float x = m.v00 * (m.v11 * m.v22 - m.v21 * m.v12);
+    const float y = m.v01 * (m.v20 * m.v12 - m.v10 * m.v22);
+    const float z = m.v02 * (m.v10 * m.v21 - m.v20 * m.v11);
+    return x + y+ z;
+}
+
+Mat3 inverse_mat3(const Mat3 m)
+{
+    const Vec3 v = vec3(m.v00, m.v10, m.v20);
+    const Vec3 w = vec3(m.v01, m.v11, m.v21);
+    const Vec3 u = vec3(m.v02, m.v12, m.v22);
+    const float scalar = 1.0f / determinant_mat3(m);
+    const Vec3 i = scalar_x_vec3(scalar, cross_product(u, w));
+    const Vec3 j = scalar_x_vec3(scalar, cross_product(v, u));
+    const Vec3 k = scalar_x_vec3(scalar, cross_product(w, v));
+    return mat3(
+        i.x, i.y, i.z,
+        j.x, j.y, j.z,
+        k.x, k.y, k.z
     );
 }
 

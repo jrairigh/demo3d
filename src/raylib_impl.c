@@ -57,6 +57,7 @@ static Rectangle rect(const float x, const float y, const float width, const flo
 }
 
 static void draw_controls();
+static void draw_fixed_fps_control();
 static void post_processing();
 static void smooth_rendered_image();
 
@@ -108,10 +109,10 @@ void raylib_on_update(Window* window, const float ts)
     (void)ts;
     window->is_open = (int)!WindowShouldClose();
 
-    window->wasd_key_state[0] = IsKeyPressedRepeat(KEY_W);
-    window->wasd_key_state[1] = IsKeyPressedRepeat(KEY_A);
-    window->wasd_key_state[2] = IsKeyPressedRepeat(KEY_S);
-    window->wasd_key_state[3] = IsKeyPressedRepeat(KEY_D);
+    window->wasd_key_state[0] = IsKeyDown(KEY_W);
+    window->wasd_key_state[1] = IsKeyDown(KEY_A);
+    window->wasd_key_state[2] = IsKeyDown(KEY_S);
+    window->wasd_key_state[3] = IsKeyDown(KEY_D);
 }
 
 void raylib_begin_draw()
@@ -132,43 +133,17 @@ void raylib_end_draw(Window* window)
 
 void raylib_render()
 {
-    //Texture2D texture = LoadTextureFromImage(image_buffer);
-    //post_processing();
-    //DrawTexture(texture2d, 0, 0, TRANSPARENT);
-    //UnloadTexture(texture);
+}
+
+float raylib_get_frame_elapsed_seconds()
+{
+    return GetFrameTime();
 }
 
 void raylib_draw_pixel(const Vec2 normalized_coordinate, const MyColor color)
 {
-    const float x = normalized_coordinate.x;
-    const float y = normalized_coordinate.y;
-    const Vector2 viewport_space = raylib_get_screen_coordinates((Vector2) { x, y });
-    const Color c = {color.red, color.green, color.blue, color.alpha};
-
-    // drawing extra pixels to fill in gaps
-    //DrawPixel(viewport_space_x - 1, viewport_space_y - 1, c);
-    //DrawPixel(viewport_space_x, viewport_space_y - 1, c);
-    //DrawPixel(viewport_space_x + 1, viewport_space_y - 1, c);
-
-    //DrawPixel(viewport_space_x - 1, viewport_space_y, c);
-    DrawPixel(viewport_space.x, viewport_space.y, c);
-    //DrawPixel(viewport_space_x + 1, viewport_space_y, c);
-
-    //DrawPixel(viewport_space_x - 1, viewport_space_y + 1, c);
-    //DrawPixel(viewport_space_x, viewport_space_y + 1, c);
-    //DrawPixel(viewport_space_x + 1, viewport_space_y + 1, c);
-
-    //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y - 1, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y - 1, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y - 1, c);
-    //
-    //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x, viewport_space_y, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y, c);
-    //
-    //ImageDrawPixel(&image_buffer, viewport_space_x - 1, viewport_space_y + 1, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x,     viewport_space_y + 1, c);
-    //ImageDrawPixel(&image_buffer, viewport_space_x + 1, viewport_space_y + 1, c);
+    const Vector2 viewport_space = raylib_get_screen_coordinates((Vector2) { normalized_coordinate.x, normalized_coordinate.y});
+    DrawPixelV(viewport_space, (Color) { color.red, color.green, color.blue, color.alpha });
 }
 
 void post_processing()
@@ -237,19 +212,17 @@ void smooth_rendered_image()
 
 void raylib_draw_line(const Vec2 start, const Vec2 end, const MyColor color)
 {
-    const float sx = start.x;
-    const float sy = start.y;
-    const float ex = end.x;
-    const float ey = end.y;
-    const Color c = { color.red, color.green, color.blue, color.alpha };
-    const float viewport_half_width = raylib_viewport_width() * 0.5f;
-    const float viewport_half_height = raylib_viewport_height() * 0.5f;
-    const int viewport_space_sx = (int)((sx + 1.0f) * viewport_half_width);
-    const int viewport_space_sy = (int)((1.0f - sy) * viewport_half_height);
-    const int viewport_space_ex = (int)((ex + 1.0f) * viewport_half_width);
-    const int viewport_space_ey = (int)((1.0f - ey) * viewport_half_height);
+    const Vector2 p0 = raylib_get_screen_coordinates((Vector2) { start.x, start.y });
+    const Vector2 p1 = raylib_get_screen_coordinates((Vector2) { end.x, end.y });
 
-    DrawLine(viewport_space_sx, viewport_space_sy, viewport_space_ex, viewport_space_ey, c);
+    DrawLineV(p0, p1, (Color) { color.red, color.green, color.blue, color.alpha });
+}
+
+void raylib_light_widget(const Vec2 center, const float radius, const MyColor color)
+{
+    const Color circle_color = { color.red, color.green, color.blue, color.alpha };
+    const Vector2 circle_center = { center.x, center.y };
+    DrawCircleLinesV(raylib_get_screen_coordinates(circle_center), radius, circle_color);
 }
 
 void raylib_draw_overlay_text(const char* text, const Vec2 position, const MyColor color)
@@ -299,10 +272,10 @@ static void draw_controls(Window* window)
     const float far_z_slider_x = 633.0f;
     const float far_z_slider_y = 93.0f;
 
-    const float x_slider_height = 22.0f;
-    const float x_slider_width = 113.0f;
-    const float x_slider_x = 639.0f;
-    const float x_slider_y = 120.0f;
+    const float speed_slider_height = 22.0f;
+    const float speed_slider_width = 113.0f;
+    const float speed_slider_x = 633.0f;
+    const float speed_slider_y = 120.0f;
 
     const float y_slider_height = 22.0f;
     const float y_slider_width = 113.0f;
@@ -360,6 +333,8 @@ static void draw_controls(Window* window)
         "Orthographic Camera",
         (bool*)&window->IsOrthographic);
 
+    draw_fixed_fps_control();
+
     GuiSlider(
         rect(fov_slider_x, fov_slider_y, fov_slider_width, fov_slider_height), 
         "FOV", 
@@ -376,7 +351,12 @@ static void draw_controls(Window* window)
         TextFormat("%2.1f", window->FarZ), 
         &window->FarZ, 100.0f, 10000.0f);
 
-    GuiSlider(rect(x_slider_x, x_slider_y, x_slider_width, x_slider_height), "X", TextFormat("%2.1f", g_vec3.x), &g_vec3.x, -500.0f, 500.0f);
+    GuiSlider(
+        rect(speed_slider_x, speed_slider_y, speed_slider_width, speed_slider_height),
+        "Speed", 
+        TextFormat("%2.1f", window->CameraSpeed), 
+        &window->CameraSpeed, 
+        1.0f, 500.0f);
     GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
     GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
 
@@ -401,10 +381,36 @@ static void draw_controls(Window* window)
     const Vector2 ndc = raylib_get_normalized_coordinate(mouse_position);
     GuiStatusBar(
         rect(status_bar_x, status_bar_y, status_bar_width, status_bar_height),
-        TextFormat("Viewport: %d x %d   FPS: %d   Mouse: (%4.2f, %-2.2f) (%d, %d)   World: (%2.f, %2.f, %2.f)   Facing: (%2.f, %2.f, %2.f)",
+        TextFormat("Viewport: %d x %d   FPS: %d   Mouse: (%4.2f, %-2.2f) (%d, %d)   World: (%2.2f, %2.2f, %2.2f)   Facing: (%2.2f, %2.2f, %2.2f)",
             (int)viewport_width, (int)viewport_height,
             GetFPS(),
             ndc.x, ndc.y, (int)mouse_position.x, (int)mouse_position.y,
             window->camera.Position.x, window->camera.Position.y, window->camera.Position.z,
             window->camera.LookAt.x, window->camera.LookAt.y, window->camera.LookAt.z));
+}
+
+void draw_fixed_fps_control()
+{
+    const float fixed_fps_checkbox_height = 20.0f;
+    const float fixed_fps_checkbox_width = 20.0f;
+    const float fixed_fps_checkbox_x = 602.0f;
+    const float fixed_fps_checkbox_y = 482.0f;
+
+    static bool is_fixed_fps_state;
+    static bool fixed_fps = false;
+    GuiCheckBox(
+        rect(fixed_fps_checkbox_x, fixed_fps_checkbox_y, fixed_fps_checkbox_width, fixed_fps_checkbox_height),
+        "Fixed FPS",
+        &is_fixed_fps_state);
+    if (is_fixed_fps_state && !fixed_fps)
+    {
+        fixed_fps = true;
+        SetTargetFPS(60);
+    }
+
+    if (!is_fixed_fps_state && fixed_fps)
+    {
+        fixed_fps = false;
+        SetTargetFPS(0);
+    }
 }
