@@ -38,14 +38,14 @@ Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
     return vec2(nx, ny);
 }
 
-Vec3 get_position_update_from_input(const Window* window, const Vec3 start, const Vec3 look_at, const float elapsed_seconds)
+Vec2 get_position_update_from_input(const Window* window, const float elapsed_seconds)
 {
     const bool w_key_down = window->wasd_key_state[W_KEY];
     const bool a_key_down = window->wasd_key_state[A_KEY];
     const bool s_key_down = window->wasd_key_state[S_KEY];
     const bool d_key_down = window->wasd_key_state[D_KEY];
     if (!w_key_down && !a_key_down && !s_key_down && !d_key_down)
-        return start;
+        return vec2(0.0f, 0.0f);
 
     const float speed = window->CameraSpeed;
     float dz = ((int)window->wasd_key_state[W_KEY]) * speed * elapsed_seconds;
@@ -53,35 +53,30 @@ Vec3 get_position_update_from_input(const Window* window, const Vec3 start, cons
     float dx = ((int)window->wasd_key_state[D_KEY]) * speed * elapsed_seconds;
     dx += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed * elapsed_seconds;
 
-    const Vec3 right = cross_product(look_at, y_axis);
-    const Vec3 strafe = scalar_x_vec3(dx, right);
-    const Vec3 zoom = scalar_x_vec3(dz, look_at);
-    //return vec3_add_vec3(start, vec3_add_vec3(strafe, zoom));
-    return vec3(start.x + dx, 0.0f, start.z + dz);
+    return vec2(dx * 0.01f, dz);
 }
 
 void update_camera_position(Window* window, const float elapsed_seconds)
 {
-    const Vec3 camera_position = window->camera.Position;
-    const Vec3 camera_look_at = window->camera.LookAt;
-    const Vec3 updated_camera_position = get_position_update_from_input(window, camera_position, camera_look_at, elapsed_seconds);
-    window->camera.Position = updated_camera_position;
+    const Vec2 deltas = get_position_update_from_input(window, elapsed_seconds);
+    const float cos_a = window->camera.LookAt.z;
+    const float sin_a = window->camera.LookAt.x;
+    const float cos_b = cosf(deltas.x);
+    const float sin_b = sinf(deltas.x);
 
-    if (updated_camera_position.x == 0.0f && updated_camera_position.y == 0.0f && updated_camera_position.z == 0.0f)
-        return;
-
-    // look towards the origin of world
-    window->camera.LookAt = normalized(scalar_x_vec3(-1.0f, updated_camera_position));
-    //const float x = lerpf(-1.0f, 1.0f, (g_vec3.x + 500.0f) / 1000.0f);
-    //const float z = lerpf(-1.0f, 1.0f, (g_vec3.z + 500.0f) / 1000.0f);
-    //window->camera.LookAt = normalized(vec3(x, 0.0f, z));
+    // cos(a + b) = cos(a)cos(b) - sin(a)sin(b)
+    const float x = cos_a * cos_b - sin_a * sin_b;
+    // sin(a + b) = cos(a)sin(b) + sin(a)cos(b)
+    const float z = cos_a * sin_b + sin_a * cos_b;
+    window->camera.LookAt = normalized(vec3(z, 0.0f, x));
+    window->camera.Position = vec3_add_vec3(window->camera.Position, scalar_x_vec3(deltas.y, window->camera.LookAt));
 }
 
 void update_light_position(Window* window, const float elapsed_seconds)
 {
     const Vec3 light_position = window->point_lights[0].Position;
-    const Vec3 updated_light_position = get_position_update_from_input(window, light_position, z_axis, elapsed_seconds);
-    window->point_lights[0].Position = updated_light_position;
+    const Vec2 deltas = get_position_update_from_input(window, elapsed_seconds);
+    window->point_lights[0].Position = vec3_add_vec3(window->camera.Position, scalar_x_vec3(deltas.y, window->camera.LookAt));
 }
 
 Window* create_window_impl()
@@ -143,7 +138,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 
     const Vec3 camera_look_at = z_axis;
     const Vec3 camera_up = y_axis;
-    const Vec3 camera_position = vec3(0.0f, 0.0f, -10.0f);
+    const Vec3 camera_position = vec3(0.0f, 0.0f, -30.0f);
     const float aspect_ratio = (float)viewport_width / (float)viewport_height;
     window->camera = perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
 
@@ -152,7 +147,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 
 void on_update(Window* window, const float elapsed_seconds)
 {
-    static bool is_camera_position_restored;
+    static bool is_camera_position_restored = 1;
     static Vec3 old_camera_position;
     window->on_update(window, elapsed_seconds);
     clear_z_buffer(window);

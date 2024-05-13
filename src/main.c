@@ -82,7 +82,7 @@ void render(Window* window)
     //draw_overlay_text(window, str2, vec2(20.0, 70.0), color(0, 255, 0, 255));
     //draw_wireframe_box(window, vec3(50.0f, 100.0f, 50.0f), 0.0f, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
     //render_pixels_to_vanishing_point(window);
-    //render_lines_to_vanishing_point(window);
+    render_lines_to_vanishing_point(window);
     draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
 
     //const float k = g_vec3.x / 10.0f;

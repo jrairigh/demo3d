@@ -414,7 +414,7 @@ void draw_controls(Window* window)
 
     static bool spinner_a_edit_mode = false;
     int control_a_value = window->Controls.x;
-    const int clicked_a = GuiSpinner(rect(a_slider_x, a_slider_y, a_slider_width, a_slider_height), "A:", &control_a_value, 1, 500, spinner_a_edit_mode);
+    const int clicked_a = GuiSpinner(rect(a_slider_x, a_slider_y, a_slider_width, a_slider_height), "A:", &control_a_value, -500, 500, spinner_a_edit_mode);
     if (clicked_a && !spinner_a_edit_mode)
     {
         spinner_a_edit_mode = true;
@@ -426,7 +426,7 @@ void draw_controls(Window* window)
 
     static bool spinner_b_edit_mode = false;
     int control_b_value = window->Controls.y;
-    const int clicked_b = GuiSpinner(rect(b_slider_x, b_slider_y, b_slider_width, b_slider_height), "B:", &control_b_value, 1, 500, spinner_b_edit_mode);
+    const int clicked_b = GuiSpinner(rect(b_slider_x, b_slider_y, b_slider_width, b_slider_height), "B:", &control_b_value, -500, 500, spinner_b_edit_mode);
     if (clicked_b && !spinner_b_edit_mode)
     {
         spinner_b_edit_mode = true;
@@ -438,7 +438,7 @@ void draw_controls(Window* window)
 
     static bool spinner_c_edit_mode = false;
     int control_c_value = window->Controls.z;
-    const int clicked_c = GuiSpinner(rect(c_slider_x, c_slider_y, c_slider_width, c_slider_height), "C:", &control_c_value, 1, 500, spinner_c_edit_mode);
+    const int clicked_c = GuiSpinner(rect(c_slider_x, c_slider_y, c_slider_width, c_slider_height), "C:", &control_c_value, -500, 500, spinner_c_edit_mode);
     if (clicked_c && !spinner_c_edit_mode)
     {
         spinner_c_edit_mode = true;
@@ -450,7 +450,7 @@ void draw_controls(Window* window)
 
     static bool spinner_d_edit_mode = false;
     int control_d_value = window->Controls.w;
-    const int clicked_d = GuiSpinner(rect(d_slider_x, d_slider_y, d_slider_width, d_slider_height), "D:", &control_d_value, 1, 500, spinner_d_edit_mode);
+    const int clicked_d = GuiSpinner(rect(d_slider_x, d_slider_y, d_slider_width, d_slider_height), "D:", &control_d_value, -500, 500, spinner_d_edit_mode);
     if (clicked_d && !spinner_d_edit_mode)
     {
         spinner_d_edit_mode = true;
