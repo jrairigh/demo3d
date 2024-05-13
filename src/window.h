@@ -12,6 +12,7 @@ Vec3 g_vec3;
 
 typedef struct Window
 {
+    // data
     const char* title;
     bool is_open;
     bool is_camera_active;
@@ -20,12 +21,16 @@ typedef struct Window
     uint32_t screen_width, screen_height;
     MyCamera camera;
     PointLight point_lights[2];
+    Vec4 Controls;
     uint32_t number_of_lights;
     float FOV;
     float NearZ;
     float FarZ;
     float CameraSpeed;
     float* z_buffer;
+    int MeshId;
+
+    // functions
     void (*pre_render)();
     void (*render)();
     void (*post_render)(struct Window* window);
@@ -39,6 +44,9 @@ typedef struct Window
     uint32_t (*get_viewport_width)();
     uint32_t (*get_viewport_height)();
     float (*get_frame_elapsed_seconds)();
+    float* (*get_mesh_triangle_points)(const int mesh_id);
+    uint32_t (*get_mesh_vertex_count)(const int mesh_id);
+    uint32_t (*get_mesh_triangle_count)(const int mesh_id);
 } Window;
 
 Window* show(const char* title, const uint32_t viewport_width, const uint32_t viewport_height);
@@ -55,5 +63,6 @@ void draw_overlay_text(Window* window, const char* text, const Vec2 position, co
 void draw_wireframe_box(Window* window, const Vec3 scale, const float angle, const Vec3 position, const MyColor color);
 void draw_grid(Window* window, const float y, const float cell_width, const float cell_height, const uint32_t rows, const uint32_t columns, const MyColor color);
 void draw_cube(Window* window, const Vec3 position, const Vec3 scale, const MyColor color);
+void draw_mesh(Window* window, const Vec3 position, const Vec3 scale, const MyColor mesh_color);
 
 void add_light_source(Window* window, const PointLight light);

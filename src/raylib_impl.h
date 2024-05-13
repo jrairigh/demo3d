@@ -15,3 +15,6 @@ void raylib_end_draw(Window* window);
 uint32_t raylib_viewport_width();
 uint32_t raylib_viewport_height();
 float raylib_get_frame_elapsed_seconds();
+float* raylib_get_mesh_triangle_points(const int mesh_id);
+uint32_t raylib_get_mesh_vertex_count(const int mesh_id);
+uint32_t raylib_get_mesh_triangle_count(const int mesh_id);

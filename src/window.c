@@ -10,12 +10,11 @@
 /*TODO
 * 1. Try cross hatching the triangle lines to fill the triangles
 * 2. Allow light to affect each pixel of the triangle
-* 3. In camera mode, draw circle to indicate roughly where light is.
-* 4. In light mode, set camera position to light position and move the light with WASD keys.
-* 5. Clipping
-* 6. Culling backfaces
-* 7. Z buffer
-* 8. Camera should face whatever the look at direction is.
+* 3. Clipping
+* 4. Culling backfaces
+* 5. Z buffer
+* 6. Camera should face whatever the look at direction is.
+* 7. First person shooter camera mode
 */
 
 enum WASD_Keys
@@ -101,6 +100,9 @@ Window* create_window_impl()
     window->get_viewport_width = raylib_viewport_width;
     window->get_viewport_height = raylib_viewport_height;
     window->get_frame_elapsed_seconds = raylib_get_frame_elapsed_seconds;
+    window->get_mesh_triangle_points = raylib_get_mesh_triangle_points;
+    window->get_mesh_vertex_count = raylib_get_mesh_vertex_count;
+    window->get_mesh_triangle_count = raylib_get_mesh_triangle_count;
     return window;
 }
 
@@ -128,9 +130,11 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->number_of_lights = 0;
     window->IsOrthographic = false;
     window->FOV = 90.0f;
-    window->NearZ = 60.0f;
-    window->FarZ = 10000.0f;
+    window->NearZ = 0.1f;
+    window->FarZ = 100.0f;
     window->CameraSpeed = 100.0f;
+    window->MeshId = 6;
+    window->Controls = vec4(10.0f, 10.0f, 10.0f, 10.0f);
 
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
@@ -245,15 +249,13 @@ void draw_pixel(Window* window, const Vec3 p1, const MyColor color)
 
 void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor color)
 {
-    Vec4 start_ = vec4(start.x, start.y, start.z, 1.0f);
-    Vec4 end_ = vec4(end.x, end.y, end.z, 1.0f);
+    Vec4 start_ = vec3_to_vec4(start, 1.0f);
+    Vec4 end_ = vec3_to_vec4(end, 1.0f);
     Vec4 p0 = mat4_x_vec4(window->camera.MVP, start_);
     Vec4 p1 = mat4_x_vec4(window->camera.MVP, end_);
 
     if (p0.w == 0.0f || p1.w == 0.0f)
-    {
         return;
-    }
 
     const Vec4 start_position = scalar_x_vec4((1.0f / p0.w), p0);
     const Vec4 end_position   = scalar_x_vec4((1.0f / p1.w), p1);
@@ -288,19 +290,17 @@ void draw_triangle(Window* window, const Triangle triangle)
     const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p2, 1.0f));
 
     if (p0.w * p1.w * p2.w == 0.0f)
-    {
         return;
-    }
 
     // scale by w
-    const Vec4 p0_ = scalar_x_vec4((1.0f / p0.w), p0);
-    const Vec4 p1_ = scalar_x_vec4((1.0f / p1.w), p1);
-    const Vec4 p2_ = scalar_x_vec4((1.0f / p2.w), p2);
+    const Vec4 p0_scaled = scalar_x_vec4((1.0f / p0.w), p0);
+    const Vec4 p1_scaled = scalar_x_vec4((1.0f / p1.w), p1);
+    const Vec4 p2_scaled = scalar_x_vec4((1.0f / p2.w), p2);
 
     // cull
-    const bool inside_view = is_within_canonical_view_volume(p0_.x, p0_.y, p0_.z) &&
-        is_within_canonical_view_volume(p1_.x, p1_.y, p1_.z) &&
-        is_within_canonical_view_volume(p2_.x, p2_.y, p2_.z);
+    const bool inside_view = is_within_canonical_view_volume(p0_scaled.x, p0_scaled.y, p0_scaled.z) &&
+        is_within_canonical_view_volume(p1_scaled.x, p1_scaled.y, p1_scaled.z) &&
+        is_within_canonical_view_volume(p2_scaled.x, p2_scaled.y, p2_scaled.z);
     if (!inside_view)
         return;
 
@@ -315,10 +315,10 @@ void draw_triangle(Window* window, const Triangle triangle)
     //window->z_buffer[i * viewport_width + j] = z;
 
     const float min_iterations = 120.0f;
-    const float min_z = fmaxf(0.1f, fminf(fminf(p0_.z, p1_.z), p2_.z));
-    const Vec2 p0_vec2 = vec2(p0_.x, p0_.y);
-    const Vec2 p1_vec2 = vec2(p1_.x, p1_.y);
-    const Vec2 p2_vec2 = vec2(p2_.x, p2_.y);
+    const float min_z = fmaxf(0.1f, fminf(fminf(p0_scaled.z, p1_scaled.z), p2_scaled.z));
+    const Vec2 p0_vec2 = vec2(p0_scaled.x, p0_scaled.y);
+    const Vec2 p1_vec2 = vec2(p1_scaled.x, p1_scaled.y);
+    const Vec2 p2_vec2 = vec2(p2_scaled.x, p2_scaled.y);
     const int iterations = (int)(min_iterations / min_z);
     for (int i = 0; i < iterations; ++i)
     {
@@ -578,8 +578,29 @@ void draw_light_widget(Window* window, const Vec3 center, const float radius, co
         return;
 
     const float distance = fmaxf(min_distance, vec3_magnitude(camera_to_center));
-    //char buffer[32] = { 0 };
-    //sprintf(buffer, "distance = %f", distance);
-    //window->draw_overlay_text(buffer, vec2(20.f, 20.0f), color);
     window->draw_light_widget(vec2(normalized_center.x, normalized_center.y), radius / distance, color);
+}
+
+void draw_mesh(Window* window, const Vec3 position, const Vec3 scale, const MyColor mesh_color)
+{
+    const int mesh_id_unused = window->MeshId;
+    const uint32_t triangle_count = window->get_mesh_triangle_count(mesh_id_unused);
+    const uint32_t vertex_count = window->get_mesh_vertex_count(mesh_id_unused);
+    const float* points = window->get_mesh_triangle_points(mesh_id_unused);
+
+    for (uint32_t i = 0; i < triangle_count; ++i)
+    {
+        const int offset = i * 9;
+        const float* index = points + offset;
+        const Vec3 p0 = vec3(index[0], index[1], index[2]);
+        const Vec3 p1 = vec3(index[3], index[4], index[5]);
+        const Vec3 p2 = vec3(index[6], index[7], index[8]);
+        const Triangle tri = triangle(p0, p1, p2, mesh_color);
+        draw_triangle(window, tri);
+    }
+
+    // mesh info
+    char buffer[256] = { 0 };
+    sprintf(buffer, "%d Triangles,  %d Vertices", triangle_count, vertex_count);
+    draw_overlay_text(window, buffer, vec2(10.0f, 10.0f), color(0, 255, 0, 255));
 }

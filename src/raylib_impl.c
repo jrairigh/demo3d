@@ -9,14 +9,36 @@
 
 #include <assert.h>
 
-static Font font = { 0 };
-static Image image_buffer;
-static Texture2D texture2d;
-static const float font_size = 18.0f;
+static const float font_size = 14.0f;
 static const float font_spacing = 5.0f;
 static const Color font_color = {0, 228, 48, 255};
 static bool collapse_control_window = false;
 static Color light_color = { 255, 0, 0, 255 };
+static int mesh_selection_index = 0;
+static bool refresh_meshes = true;
+
+typedef enum MeshId
+{
+    Poly,
+    Plane,
+    Cube,
+    Sphere,
+    HemiSphere,
+    Cylinder,
+    Cone,
+    Torus,
+    Knot
+} MeshId;
+
+typedef struct MeshSelection
+{
+    MeshId Id;
+    const char* FriendlyName;
+    bool IsLoaded;
+    Mesh MeshData;
+} MeshSelection;
+
+MeshSelection meshes[9];
 
 #define BG_COLOR CLITERAL(Color) { 50, 49, 64, 255 }
 #define TRANSPARENT CLITERAL(Color) {0, 0, 0, 0}
@@ -30,6 +52,18 @@ float gui_component_x = 0.0f,
 const float control_window_screen_width_percentage = 0.27f;
 float control_window_height;
 float control_window_width;
+
+static void draw_controls();
+static void draw_fixed_fps_control();
+static void post_processing();
+//static void smooth_rendered_image();
+static void unload_meshes();
+static void generate_meshes(const Vec4 controls);
+
+static MeshSelection mesh_selection(const MeshId id, const char* friendly_name, const Mesh mesh)
+{
+    return (MeshSelection) { id, friendly_name, true, mesh };
+}
 
 static Color scalar_x_color(const float s, const Color color)
 {
@@ -55,11 +89,6 @@ static Rectangle rect(const float x, const float y, const float width, const flo
 {
     return (Rectangle) { x, y, width, height };
 }
-
-static void draw_controls();
-static void draw_fixed_fps_control();
-static void post_processing();
-static void smooth_rendered_image();
 
 uint32_t raylib_viewport_width()
 {
@@ -92,16 +121,10 @@ Vector2 raylib_get_screen_coordinates(const Vector2 normalized_coordinates)
 void raylib_show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
 {
     InitWindow(screen_width, screen_height, title);
-
-    // Load global data (assets that must be available in all screens, i.e. font)
-    font = LoadFont("resources/mecha.png");
     GuiLoadStyleDark();
 
     control_window_height = 1.0f * GetScreenHeight();
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
-
-    image_buffer = GenImageWhiteNoise((int)raylib_viewport_width(), (int)raylib_viewport_height(), 1.0f);
-    texture2d = LoadTextureFromImage(image_buffer);
 }
 
 void raylib_on_update(Window* window, const float ts)
@@ -113,6 +136,8 @@ void raylib_on_update(Window* window, const float ts)
     window->wasd_key_state[1] = IsKeyDown(KEY_A);
     window->wasd_key_state[2] = IsKeyDown(KEY_S);
     window->wasd_key_state[3] = IsKeyDown(KEY_D);
+
+    generate_meshes(window->Controls);
 }
 
 void raylib_begin_draw()
@@ -151,6 +176,7 @@ void post_processing()
     smooth_rendered_image();
 }
 
+/*
 void smooth_rendered_image()
 {
     const uint32_t viewport_width = raylib_viewport_width();
@@ -169,12 +195,12 @@ void smooth_rendered_image()
             const int x_plus_1 = (int)x + 1;
             const int y_plus_1 = (int)y + 1;
 
-            /* Average the 3x3 area of pixel colors where e is the target pixel
-                 x-1  x  x+1
-            y-1 | a | b | c |
-            y   | d | e | f |
-            y+1 | g | h | i |
-            */
+            //Average the 3x3 area of pixel colors where e is the target pixel
+            //     x-1  x  x+1
+            //y-1 | a | b | c |
+            //y   | d | e | f |
+            //y+1 | g | h | i |
+            //
             const float a = x_minus_1 >= 0 && y_minus_1 >= 0 ? corner_value : zero_value;
             const float b = y_minus_1 >= 0 ? adjacent_value : zero_value;
             const float c = x_plus_1 < viewport_width && y_minus_1 >= 0 ? corner_value : zero_value;
@@ -209,6 +235,7 @@ void smooth_rendered_image()
         }
     }
 }
+*/
 
 void raylib_draw_line(const Vec2 start, const Vec2 end, const MyColor color)
 {
@@ -227,24 +254,36 @@ void raylib_light_widget(const Vec2 center, const float radius, const MyColor co
 
 void raylib_draw_overlay_text(const char* text, const Vec2 position, const MyColor color)
 {
-    const Color c = { color.red, color.green, color.blue, color.alpha };
-    const Vector2 p = { position.x, position.y };
-    DrawTextEx(font, text, p, font_size, font_spacing, c);
+    DrawText(text, position.x, position.y, font_size, (Color) { color.red, color.green, color.blue, color.alpha });
+}
+
+float* raylib_get_mesh_triangle_points(const int mesh_id)
+{
+    (void)mesh_id;
+    return meshes[mesh_selection_index].MeshData.vertices;
+}
+
+uint32_t raylib_get_mesh_vertex_count(const int mesh_id)
+{
+    (void)mesh_id;
+    return (uint32_t)meshes[mesh_selection_index].MeshData.vertexCount;
+}
+
+uint32_t raylib_get_mesh_triangle_count(const int mesh_id)
+{
+    (void)mesh_id;
+    return (uint32_t)meshes[mesh_selection_index].MeshData.triangleCount;
 }
 
 void raylib_close_window()
 {
-    UnloadImage(image_buffer);
-    UnloadTexture(texture2d);
-
-    // Unload global data loaded
-    UnloadFont(font);
+    unload_meshes();
 
     // Close window and OpenGL context
     CloseWindow();
 }
 
-static void draw_controls(Window* window)
+void draw_controls(Window* window)
 {
     if (collapse_control_window)
     {
@@ -277,15 +316,30 @@ static void draw_controls(Window* window)
     const float speed_slider_x = 633.0f;
     const float speed_slider_y = 120.0f;
 
-    const float y_slider_height = 22.0f;
-    const float y_slider_width = 113.0f;
-    const float y_slider_x = 639.0f;
-    const float y_slider_y = 147.0f;
+    const float mesh_dropdown_height = 22.0f;
+    const float mesh_dropdown_width = 80.0f;
+    const float mesh_dropdown_x = 595.0f;
+    const float mesh_dropdown_y = 147.0f;
 
-    const float z_slider_height = 22.0f;
-    const float z_slider_width = 113.0f;
-    const float z_slider_x = 639.0f;
-    const float z_slider_y = 174.0f;
+    const float a_slider_height = 22.0f;
+    const float a_slider_width = 90.0f;
+    const float a_slider_x = 700.0f;
+    const float a_slider_y = 147.0f;
+
+    const float b_slider_height = 22.0f;
+    const float b_slider_width = 90.0f;
+    const float b_slider_x = 700.0f;
+    const float b_slider_y = 174.0f;
+
+    const float c_slider_height = 22.0f;
+    const float c_slider_width = 90.0f;
+    const float c_slider_x = 700.0f;
+    const float c_slider_y = 201.0f;
+
+    const float d_slider_height = 22.0f;
+    const float d_slider_width = 90.0f;
+    const float d_slider_x = 700.0f;
+    const float d_slider_y = 228.0f;
 
     const float orthographic_mode_checkbox_height = 20.0f;
     const float orthographic_mode_checkbox_width = 20.0f;
@@ -295,17 +349,17 @@ static void draw_controls(Window* window)
     const float light_color_picker_height = 175.0f;
     const float light_color_picker_width = 175.0f;
     const float light_color_picker_x = 593.0f;
-    const float light_color_picker_y = 243.0f;
+    const float light_color_picker_y = 270.0f;
 
     const float light_intensity_slider_height = 22.0f;
     const float light_intensity_slider_width = 50.0f;
     const float light_intensity_slider_x = 687.0f;
-    const float light_intensity_slider_y = 435.0f;
+    const float light_intensity_slider_y = 455.0f;
 
     const float light_color_label_height = 22.0f;
     const float light_color_label_width = 78.0f;
     const float light_color_label_x = 595.0f;
-    const float light_color_label_y = 221.0f;
+    const float light_color_label_y = 250.0f;
 
     const float status_bar_height = 26.0f;
     const float status_bar_width = 800.0f;
@@ -357,8 +411,64 @@ static void draw_controls(Window* window)
         TextFormat("%2.1f", window->CameraSpeed), 
         &window->CameraSpeed, 
         1.0f, 500.0f);
-    GuiSlider(rect(y_slider_x, y_slider_y, y_slider_width, y_slider_height), "Y", TextFormat("%2.1f", g_vec3.y), &g_vec3.y, -500.0f, 500.0f);
-    GuiSlider(rect(z_slider_x, z_slider_y, z_slider_width, z_slider_height), "Z", TextFormat("%2.1f", g_vec3.z), &g_vec3.z, -500.0f, 500.0f);
+
+    static bool spinner_a_edit_mode = false;
+    int control_a_value = window->Controls.x;
+    const int clicked_a = GuiSpinner(rect(a_slider_x, a_slider_y, a_slider_width, a_slider_height), "A:", &control_a_value, 1, 500, spinner_a_edit_mode);
+    if (clicked_a && !spinner_a_edit_mode)
+    {
+        spinner_a_edit_mode = true;
+    }
+    else if (clicked_a)
+    {
+        spinner_a_edit_mode = false;
+    }
+
+    static bool spinner_b_edit_mode = false;
+    int control_b_value = window->Controls.y;
+    const int clicked_b = GuiSpinner(rect(b_slider_x, b_slider_y, b_slider_width, b_slider_height), "B:", &control_b_value, 1, 500, spinner_b_edit_mode);
+    if (clicked_b && !spinner_b_edit_mode)
+    {
+        spinner_b_edit_mode = true;
+    }
+    else if (clicked_b)
+    {
+        spinner_b_edit_mode = false;
+    }
+
+    static bool spinner_c_edit_mode = false;
+    int control_c_value = window->Controls.z;
+    const int clicked_c = GuiSpinner(rect(c_slider_x, c_slider_y, c_slider_width, c_slider_height), "C:", &control_c_value, 1, 500, spinner_c_edit_mode);
+    if (clicked_c && !spinner_c_edit_mode)
+    {
+        spinner_c_edit_mode = true;
+    }
+    else if (clicked_c)
+    {
+        spinner_c_edit_mode = false;
+    }
+
+    static bool spinner_d_edit_mode = false;
+    int control_d_value = window->Controls.w;
+    const int clicked_d = GuiSpinner(rect(d_slider_x, d_slider_y, d_slider_width, d_slider_height), "D:", &control_d_value, 1, 500, spinner_d_edit_mode);
+    if (clicked_d && !spinner_d_edit_mode)
+    {
+        spinner_d_edit_mode = true;
+    }
+    else if (clicked_d)
+    {
+        spinner_d_edit_mode = false;
+    }
+
+    refresh_meshes = control_a_value != window->Controls.x || 
+        control_b_value != window->Controls.y || 
+        control_c_value != window->Controls.z ||
+        control_d_value != window->Controls.w;
+
+    window->Controls.x = control_a_value;
+    window->Controls.y = control_b_value;
+    window->Controls.z = control_c_value;
+    window->Controls.w = control_d_value;
 
     GuiLabel(rect(light_color_label_x, light_color_label_y, light_color_label_width, light_color_label_height), "Light Color");
     GuiColorPicker(rect(light_color_picker_x, light_color_picker_y, light_color_picker_width, light_color_picker_height), "Light Color", &light_color);
@@ -387,6 +497,27 @@ static void draw_controls(Window* window)
             ndc.x, ndc.y, (int)mouse_position.x, (int)mouse_position.y,
             window->camera.Position.x, window->camera.Position.y, window->camera.Position.z,
             window->camera.LookAt.x, window->camera.LookAt.y, window->camera.LookAt.z));
+
+    GuiUnlock();
+
+    static bool dropdown_edit_mode = false;
+    if (dropdown_edit_mode)
+        GuiLock();
+
+    const bool clicked = GuiDropdownBox(rect(mesh_dropdown_x, mesh_dropdown_y, mesh_dropdown_width, mesh_dropdown_height),
+        "Poly;Plane;Cube;Sphere;HemiSphere;Cylinder;Cone;Torus;Knot",
+        &mesh_selection_index, dropdown_edit_mode);
+    if (clicked && !dropdown_edit_mode)
+    {
+        // expanding dropdown to make a new mesh selection
+        dropdown_edit_mode = true;
+    }
+    else if(clicked)
+    {
+        // mesh selection is made
+        dropdown_edit_mode = false;
+        refresh_meshes = true;
+    }
 }
 
 void draw_fixed_fps_control()
@@ -412,5 +543,139 @@ void draw_fixed_fps_control()
     {
         fixed_fps = false;
         SetTargetFPS(0);
+    }
+}
+
+static MeshSelection generate_mesh_poly(const Vec4 controls)
+{
+    if (meshes[Poly].IsLoaded)
+        UnloadMesh(meshes[Poly].MeshData);
+
+    const Mesh mesh = GenMeshPoly(controls.x, controls.y);
+    return mesh_selection(Poly, "Poly", mesh);
+}
+
+static MeshSelection generate_mesh_plane(const Vec4 controls)
+{
+    if (meshes[Plane].IsLoaded)
+        UnloadMesh(meshes[Plane].MeshData);
+
+    const Mesh mesh = GenMeshPlane(controls.x, controls.y, (int)controls.z, (int)controls.w);
+    return mesh_selection(Plane, "Plane", mesh);
+}
+
+static MeshSelection generate_mesh_cube(const Vec4 controls)
+{
+    if (meshes[Cube].IsLoaded)
+        UnloadMesh(meshes[Cube].MeshData);
+
+    const Mesh mesh = GenMeshCube(controls.x, controls.y, controls.z);
+    return mesh_selection(Cube, "Cube", mesh);
+}
+
+static MeshSelection generate_mesh_sphere(const Vec4 controls)
+{
+    if (meshes[Sphere].IsLoaded)
+        UnloadMesh(meshes[Sphere].MeshData);
+
+    const Mesh mesh = GenMeshSphere(controls.x, (int)controls.y, (int)controls.z);
+    return mesh_selection(Sphere, "Sphere", mesh);
+}
+
+static MeshSelection generate_mesh_hemisphere(const Vec4 controls)
+{
+    if (meshes[HemiSphere].IsLoaded)
+        UnloadMesh(meshes[HemiSphere].MeshData);
+
+    const Mesh mesh = GenMeshHemiSphere(controls.x, (int)controls.y, (int)controls.z);
+    return mesh_selection(HemiSphere, "Hemisphere", mesh);
+}
+
+static MeshSelection generate_mesh_cylinder(const Vec4 controls)
+{
+    if (meshes[Cylinder].IsLoaded)
+        UnloadMesh(meshes[Cylinder].MeshData);
+
+    const Mesh mesh = GenMeshCylinder(controls.x, controls.y, (int)controls.z);
+    return mesh_selection(Cylinder, "Cylinder", mesh);
+}
+
+static MeshSelection generate_mesh_cone(const Vec4 controls)
+{
+    if (meshes[Cone].IsLoaded)
+        UnloadMesh(meshes[Cone].MeshData);
+
+    const Mesh mesh = GenMeshCone(controls.x, controls.y, (int)controls.z);
+    return mesh_selection(Cone, "Cone", mesh);
+}
+
+static MeshSelection generate_mesh_torus(const Vec4 controls)
+{
+    if (meshes[Torus].IsLoaded)
+        UnloadMesh(meshes[Torus].MeshData);
+
+    const Mesh mesh = GenMeshTorus(controls.x, controls.y, (int)controls.z, (int)controls.w);
+    return mesh_selection(Torus, "Torus", mesh);
+}
+
+static MeshSelection generate_mesh_knot(const Vec4 controls)
+{
+    if (meshes[Knot].IsLoaded)
+        UnloadMesh(meshes[Knot].MeshData);
+
+    const Mesh mesh = GenMeshKnot(controls.x, controls.y, (int)controls.z, (int)controls.w);
+    return mesh_selection(Knot, "Knot", mesh);
+}
+
+static void generate_meshes(const Vec4 controls)
+{
+    if (!refresh_meshes)
+        return;
+
+    refresh_meshes = false;
+    switch (mesh_selection_index)
+    {
+    case Poly:
+        meshes[Poly] = generate_mesh_poly(controls);
+        break;
+    case Plane:
+        meshes[Plane] = generate_mesh_plane(controls);
+        break;
+    case Cube:
+        meshes[Cube] = generate_mesh_cube(controls);
+        break;
+    case Sphere:
+        meshes[Sphere] = generate_mesh_sphere(controls);
+        break;
+    case HemiSphere:
+        meshes[HemiSphere] = generate_mesh_hemisphere(controls);
+        break;
+    case Cylinder:
+        meshes[Cylinder] = generate_mesh_cylinder(controls);
+        break;
+    case Cone:
+        meshes[Cone] = generate_mesh_cone(controls);
+        break;
+    case Torus:
+        meshes[Torus] = generate_mesh_torus(controls);
+        break;
+    case Knot:
+        meshes[Knot] = generate_mesh_knot(controls);
+        break;
+    default:
+        break;
+    }
+}
+
+static void unload_meshes()
+{
+    MeshSelection* selection = meshes;
+    MeshSelection* last = meshes + _countof(meshes);
+    for (; selection != last; ++selection)
+    {
+        if (!selection->IsLoaded)
+            continue;
+
+        UnloadMesh(selection->MeshData);
     }
 }

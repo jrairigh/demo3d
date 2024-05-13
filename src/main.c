@@ -46,9 +46,9 @@ void render_pixels_to_vanishing_point(Window* window)
 
 void render_lines_to_vanishing_point(Window* window)
 {
-    const float k = g_vec3.x / 10.0f;
-    const float s = g_vec3.y / 10.0f;
-    const float n = g_vec3.z / 10.0f;
+    const float k = 100.0f;
+    const float s = 20.0f;
+    const float n = 100.0f;
     for (int i = 1; i < n; ++i)
     {
         draw_line(window, vec3(-k, k,  s * i), vec3(k, k,   s * i), color(255, 0, 0, 255));
@@ -71,8 +71,8 @@ void render(Window* window)
     
     //render_4_triangles(window);
     //render_overlapping_triangles(window);
-    draw_cube(window, origin, vec3(20.0f, 20.0f, 20.0f), color(0, 255, 0, 255));
-    draw_grid(window, -10.0f, 10.0f, 10.0f, 10, 10, color(80, 80, 80, 255));
+    //draw_cube(window, origin, vec3(20.0f, 20.0f, 20.0f), color(0, 255, 0, 255));
+    //draw_grid(window, -10.0f, 10.0f, 10.0f, 10, 10, color(80, 80, 80, 255));
     //Vec3 cam_position = window->camera.Position;
     //Vec3 cam_lookat = window->camera.LookAt;
     //char str1[32] = { 0 }, str2[32] = { 0 };
@@ -83,6 +83,7 @@ void render(Window* window)
     //draw_wireframe_box(window, vec3(50.0f, 100.0f, 50.0f), 0.0f, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
     //render_pixels_to_vanishing_point(window);
     //render_lines_to_vanishing_point(window);
+    draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
 
     //const float k = g_vec3.x / 10.0f;
     //const float s = g_vec3.y / 10.0f;
