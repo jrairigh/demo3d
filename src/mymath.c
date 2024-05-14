@@ -56,9 +56,9 @@ Vec2 vec2_minus_vec2(const Vec2 a, const Vec2 b)
     return vec2(a.x - b.x, a.y - b.y);
 }
 
-Vec3 vec3_minus_vec3(const Vec3 a, const Vec3 b)
+Vec3 vec3_minus_vec3(const Vec3 to, const Vec3 from)
 {
-    return vec3(a.x - b.x, a.y - b.y, a.z - b.z);
+    return vec3(to.x - from.x, to.y - from.y, to.z - from.z);
 }
 
 Vec3 vec3_add_vec3(const Vec3 a, const Vec3 b)
@@ -171,6 +171,14 @@ Vec2 lerp_vec2(const Vec2 start, const Vec2 end, const float t)
     const float x = lerpf(start.x, end.x, t);
     const float y = lerpf(start.y, end.y, t);
     return vec2(x, y);
+}
+
+Vec3 lerp_vec3(const Vec3 start, const Vec3 end, const float t)
+{
+    const float x = lerpf(start.x, end.x, t);
+    const float y = lerpf(start.y, end.y, t);
+    const float z = lerpf(start.z, end.z, t);
+    return vec3(x, y, z);
 }
 
 Vec3 mat3_x_vec3(const Mat3 m, const Vec3 a)
@@ -395,4 +403,10 @@ Mat4 translation_mat4(const Vec3 v)
         0.0f, 0.0f, 1.0f, v.z,
         0.0f, 0.0f, 0.0f, 1.0f
     );
+}
+
+Vec3 get_triangle_center(const Triangle triangle)
+{
+    const Vec3 p0p1_mid = lerp_vec3(triangle.p0, triangle.p1, 0.5f);
+    return lerp_vec3(p0p1_mid, triangle.p2, (1.0f/3.0f));
 }

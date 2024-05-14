@@ -1,10 +1,19 @@
 #include "window.h"
 #include "mymath.h"
 
+#include <assert.h>
 #include <stdio.h>
 
 const int screen_width = 800;
 const int screen_height = 600;
+
+int main()
+{
+    Window* window = show("3d Demo", screen_width, screen_height);
+    update(window);
+    close_window(&window);
+    return 0;
+}
 
 void render_4_triangles(Window* window)
 {
@@ -37,9 +46,9 @@ void render_pixels_to_vanishing_point(Window* window)
     const float n = g_vec3.z / 10.0f;
     for (int i = 1; i < n; ++i)
     {
-        draw_pixel(window, vec3(-k,  k, s * i), color(255, 0, 0,   255));
-        draw_pixel(window, vec3(k,   k, s * i), color(0, 255, 0,   255));
-        draw_pixel(window, vec3(k,  -k, s * i), color(0,   0, 255, 255));
+        draw_pixel(window, vec3(-k, k, s * i), color(255, 0, 0, 255));
+        draw_pixel(window, vec3(k, k, s * i), color(0, 255, 0, 255));
+        draw_pixel(window, vec3(k, -k, s * i), color(0, 0, 255, 255));
         draw_pixel(window, vec3(-k, -k, s * i), color(255, 0, 255, 255));
     }
 }
@@ -51,24 +60,58 @@ void render_lines_to_vanishing_point(Window* window)
     const float n = 100.0f;
     for (int i = 1; i < n; ++i)
     {
-        draw_line(window, vec3(-k, k,  s * i), vec3(k, k,   s * i), color(255, 0, 0, 255));
-        draw_line(window, vec3(k, k,   s * i), vec3(k, -k,  s * i), color(0, 255, 0, 255));
-        draw_line(window, vec3(k, -k,  s * i), vec3(-k, -k, s * i), color(0, 0, 255, 255));
-        draw_line(window, vec3(-k, -k, s * i), vec3(-k, k,  s * i), color(255, 0, 255, 255));
+        draw_line(window, vec3(-k, k, s * i), vec3(k, k, s * i), color(255, 0, 0, 255));
+        draw_line(window, vec3(k, k, s * i), vec3(k, -k, s * i), color(0, 255, 0, 255));
+        draw_line(window, vec3(k, -k, s * i), vec3(-k, -k, s * i), color(0, 0, 255, 255));
+        draw_line(window, vec3(-k, -k, s * i), vec3(-k, k, s * i), color(255, 0, 255, 255));
     }
-    
+
     draw_line(window, vec3(-k, -k, s), vec3(-k, -k, s * n), color(255, 255, 0, 255));
-    draw_line(window, vec3(k, -k,  s), vec3(k, -k,  s * n), color(255, 255, 0, 255));
+    draw_line(window, vec3(k, -k, s), vec3(k, -k, s * n), color(255, 255, 0, 255));
+}
+
+void triangle_culling_test(Window* window)
+{
+    const Vec3 points[] = {
+        /*0*/vec3(0.0f, -20.0f, 20.0f),
+        /*1*/vec3(20.0f, -20.0f, -20.0f),
+        /*2*/vec3(-20.0f, -20.0f, -20.0f),
+        /*3*/vec3(0.0f, 20.0f, 0.0f) };
+    const int indices[] = {
+        //3,2,1,
+        //3,1,0,
+        3,0,2,
+    };
+
+    assert(_countof(indices) % 3 == 0);
+    for (int i = 0; i < _countof(indices); i += 3)
+    {
+        const Vec3 p0 = points[indices[i]];
+        const Vec3 p1 = points[indices[i + 1]];
+        const Vec3 p2 = points[indices[i + 2]];
+        const Vec3 p0p1 = vec3_minus_vec3(p1, p0);
+        const Vec3 p1p2 = vec3_minus_vec3(p2, p1);
+        const Vec3 normal = normalized(cross_product(p0p1, p1p2));
+        const Triangle t = triangle(p0, p1, p2, color(255, 0, 0, 255));
+        const Vec3 center_start = get_triangle_center(t);
+        const Vec3 center_end = vec3_add_vec3(center_start, scalar_x_vec3(10.0f, normal));
+        draw_triangle(window, t);
+        draw_line(window, p0, p1, color(255, 255, 0, 255));
+        draw_line(window, p1, p2, color(0, 255, 0, 255));
+        draw_line(window, p2, p0, color(0, 255, 255, 255));
+        draw_line(window, center_start, center_end, color(255, 255, 0, 255));
+    }
 }
 
 void render(Window* window)
 {
     if (window->number_of_lights == 0)
     {
-        const PointLight light = point_light(10000.0f, vec3(-10.0f, -10.0f, -10.0f), color(255,0,0,255));
+        const PointLight light = point_light(10000.0f, vec3(-10.0f, -10.0f, -10.0f), color(255, 0, 0, 255));
         add_light_source(window, light);
     }
-    
+
+    triangle_culling_test(window);
     //render_4_triangles(window);
     //render_overlapping_triangles(window);
     //draw_cube(window, origin, vec3(20.0f, 20.0f, 20.0f), color(0, 255, 0, 255));
@@ -82,39 +125,6 @@ void render(Window* window)
     //draw_overlay_text(window, str2, vec2(20.0, 70.0), color(0, 255, 0, 255));
     //draw_wireframe_box(window, vec3(50.0f, 100.0f, 50.0f), 0.0f, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
     //render_pixels_to_vanishing_point(window);
-    render_lines_to_vanishing_point(window);
-    draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
-
-    //const float k = g_vec3.x / 10.0f;
-    //const float s = g_vec3.y / 10.0f;
-    //const float n = g_vec3.z / 10.0f;
-    //const Mat4 cube = orthographic_mat4(1.0f, 100.0f, 1.0f, 99.9f, 100.0f, 999.9f);
-    //const Vec3 in = vec3(FOV, NearZ, FarZ);
-    //const Vec3 out = mat4_x_vec3(cube, in);
-    //char buffer[256] = { 0 };
-    //sprintf(&buffer, "<%.1f, %.1f, %.1f>", in.x, in.y, in.z);
-    //draw_overlay_text(window, buffer, vec2(100.0f, 100.0f), color(0, 255, 0, 100));
-    //
-    //char buffer2[256] = { 0 };
-    //sprintf(&buffer2, "<%.1f, %.1f, %.1f>", out.x, out.y, out.z);
-    //draw_overlay_text(window, buffer2, vec2(100.0f, 130.0f), color(0, 255, 0, 100));
-
-    //const Mat4 mp = perspective_mat4(4.0f / 3.0f, 60.0f, 1.0f, 999.9f);
-    //const Vec4 in = vec4(FOV, NearZ, FarZ, 1.0f);
-    //const Vec4 out = mat4_x_vec4(mp, in);
-    //char buffer[256] = { 0 };
-    //sprintf(&buffer, "<%.1f, %.1f, %.1f>", in.x, in.y, in.z);
-    //draw_overlay_text(window, buffer, vec2(100.0f, 100.0f), color(0, 255, 0, 100));
-    //
-    //char buffer2[256] = { 0 };
-    //sprintf(&buffer2, "<%.1f, %.1f, %.1f, %.1f>", out.x, out.y, out.z, out.w);
-    //draw_overlay_text(window, buffer2, vec2(100.0f, 130.0f), color(0, 255, 0, 100));
-}
-
-int main()
-{
-    Window* window = show("3d Demo", screen_width, screen_height);
-    update(window);
-    close_window(&window);
-    return 0;
+    //render_lines_to_vanishing_point(window);
+    //draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
 }

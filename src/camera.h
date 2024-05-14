@@ -9,6 +9,8 @@ typedef struct MyCamera
     Mat4 MVP;
 } MyCamera;
 
+bool is_camera_facing_triangle(const MyCamera camera, const Triangle triangle);
+
 MyCamera perspective_camera(
     const Vec3 position, 
     const Vec3 look_at, 
@@ -17,6 +19,7 @@ MyCamera perspective_camera(
     const float fov, 
     const float near_plane, 
     const float far_plane);
+
 MyCamera orthographic_camera(
     const Vec3 position,
     const float left_plane, 

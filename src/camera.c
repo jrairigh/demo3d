@@ -5,6 +5,18 @@
 #include <assert.h>
 #include <math.h>
 
+bool is_camera_facing_triangle(const MyCamera camera, const Triangle triangle)
+{
+    const Vec3 center = get_triangle_center(triangle);
+    const Vec3 p0p1 = vec3_minus_vec3(triangle.p1, triangle.p0);
+    const Vec3 p1p2 = vec3_minus_vec3(triangle.p2, triangle.p1);
+    const Vec3 triangle_normal = cross_product(p0p1, p1p2);
+    const Vec3 triangle_direction_from_camera = vec3_minus_vec3(center, camera.Position);
+    const float facing_triangle_normal_amount = vec3_dot_product(triangle_normal, camera.LookAt);
+    const float in_front_of_amount = vec3_dot_product(triangle_direction_from_camera, camera.LookAt);
+    return facing_triangle_normal_amount < 0.0f && in_front_of_amount > 0.0f;
+}
+
 MyCamera perspective_camera(
     const Vec3 position,
     const Vec3 look_at,

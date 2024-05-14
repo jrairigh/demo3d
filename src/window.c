@@ -279,10 +279,12 @@ void draw_triangles(Window* window, const Triangles triangle, const uint32_t tri
 
 void draw_triangle(Window* window, const Triangle triangle)
 {
+    const MyCamera* camera = &window->camera;
+
     // transform by view matrix
-    const Vec4 p0 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p0, 1.0f));
-    const Vec4 p1 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p1, 1.0f));
-    const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p2, 1.0f));
+    const Vec4 p0 = mat4_x_vec4(camera->MVP, vec3_to_vec4(triangle.p0, 1.0f));
+    const Vec4 p1 = mat4_x_vec4(camera->MVP, vec3_to_vec4(triangle.p1, 1.0f));
+    const Vec4 p2 = mat4_x_vec4(camera->MVP, vec3_to_vec4(triangle.p2, 1.0f));
 
     if (p0.w * p1.w * p2.w == 0.0f)
         return;
@@ -299,6 +301,9 @@ void draw_triangle(Window* window, const Triangle triangle)
     if (!inside_view)
         return;
 
+    if (!is_camera_facing_triangle(*camera, triangle))
+        return;
+
     // test within triangle and not occluded by something in front
     //const float z = is_within_triangle(device_coordinate,
     //    vec3(p0_.x, p0_.y, p0_.z),
@@ -309,7 +314,7 @@ void draw_triangle(Window* window, const Triangle triangle)
 
     //window->z_buffer[i * viewport_width + j] = z;
 
-    const float min_iterations = 120.0f;
+    const float min_iterations = 200.0f;
     const float min_z = fmaxf(0.1f, fminf(fminf(p0_scaled.z, p1_scaled.z), p2_scaled.z));
     const Vec2 p0_vec2 = vec2(p0_scaled.x, p0_scaled.y);
     const Vec2 p1_vec2 = vec2(p1_scaled.x, p1_scaled.y);
@@ -320,15 +325,15 @@ void draw_triangle(Window* window, const Triangle triangle)
         const float t = (float)i / (float)iterations;
         const Vec2 start_1 = lerp_vec2(p0_vec2, p1_vec2, t);
         const Vec2 end_1 = lerp_vec2(p0_vec2, p2_vec2, t);
-        //const Vec2 start_2 = lerp_vec2(p1_vec2, p0_vec2, t);
-        //const Vec2 end_2 = lerp_vec2(p1_vec2, p2_vec2, t);
+        const Vec2 start_2 = lerp_vec2(p1_vec2, p0_vec2, t);
+        const Vec2 end_2 = lerp_vec2(p1_vec2, p2_vec2, t);
 
         const MyColor pixel_color = window->number_of_lights == 1
             ? color_at_position(window->point_lights[0], vec3(start_1.x, start_1.y, p0.z))
             : triangle.color;
 
         window->draw_line(start_1, end_1, pixel_color);
-        //window->draw_line(start_2, end_2, pixel_color);
+        window->draw_line(start_2, end_2, pixel_color);
     }
 }
 
