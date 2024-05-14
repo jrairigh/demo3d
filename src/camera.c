@@ -31,18 +31,20 @@ MyCamera perspective_camera(
 
     const float x = look_at.x;
     const float z = look_at.z;
-    const Mat4 model_view_matrix = mat4(
-        z,    0.0f, -x,   -position.x,
+    const Mat4 translation = translation_mat4(scalar_x_vec3(-1.0f, position));
+    const Mat4 rotation = mat4(
+        z,    0.0f, -x,   0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
-        x,    0.0f, z,    -position.z,
+        x,    0.0f, z,    0.0f,
         0.0f, 0.0f, 0.0f, 1.0f
     );
+    const Mat4 perspective_matrix = perspective_mat4(aspect_ratio, fov, near_plane, far_plane);
 
+    const Mat4 translate_and_rotate_matrix = mat4_x_mat4(rotation, translation);
     MyCamera camera;
     camera.Position = position;
     camera.LookAt = look_at;
-    camera.MVP = mat4_x_mat4(
-        perspective_mat4(aspect_ratio, fov, near_plane, far_plane), model_view_matrix);
+    camera.MVP = mat4_x_mat4(perspective_matrix, translate_and_rotate_matrix);
     return camera;
 }
 

@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-Vec3 g_vec3;
+//Vec3 g_vec3;
 
 typedef struct Window
 {

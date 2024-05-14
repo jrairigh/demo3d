@@ -25,7 +25,7 @@ enum WASD_Keys
     D_KEY
 };
 
-Vec3 g_vec3 = { 0.0f, 0.0f, 1.0f };
+//Vec3 g_vec3 = { 0.0f, 0.0f, 1.0f };
 
 static void post_render(Window* window);
 
@@ -34,7 +34,7 @@ Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
     const float viewport_width = (float)window->get_viewport_width();
     const float viewport_height = (float)window->get_viewport_height();
     const float nx = clamp(lerpf(-1.0f, 1.0f, position.x / viewport_width), -1.0f, 1.0f);
-    const float ny = clamp(lerpf(1.0f, -1.0f, position.y / viewport_width), -1.0f, 1.0f);
+    const float ny = clamp(lerpf(1.0f, -1.0f, position.y / viewport_height), -1.0f, 1.0f);
     return vec2(nx, ny);
 }
 
@@ -65,16 +65,15 @@ void update_camera_position(Window* window, const float elapsed_seconds)
     const float sin_b = sinf(deltas.x);
 
     // cos(a + b) = cos(a)cos(b) - sin(a)sin(b)
-    const float x = cos_a * cos_b - sin_a * sin_b;
+    const float z = cos_a * cos_b - sin_a * sin_b;
     // sin(a + b) = cos(a)sin(b) + sin(a)cos(b)
-    const float z = cos_a * sin_b + sin_a * cos_b;
-    window->camera.LookAt = normalized(vec3(z, 0.0f, x));
+    const float x = cos_a * sin_b + sin_a * cos_b;
+    window->camera.LookAt = normalized(vec3(x, 0.0f, z));
     window->camera.Position = vec3_add_vec3(window->camera.Position, scalar_x_vec3(deltas.y, window->camera.LookAt));
 }
 
 void update_light_position(Window* window, const float elapsed_seconds)
 {
-    const Vec3 light_position = window->point_lights[0].Position;
     const Vec2 deltas = get_position_update_from_input(window, elapsed_seconds);
     window->point_lights[0].Position = vec3_add_vec3(window->camera.Position, scalar_x_vec3(deltas.y, window->camera.LookAt));
 }
@@ -155,9 +154,6 @@ void on_update(Window* window, const float elapsed_seconds)
     const float viewport_width = (float)window->get_viewport_width();
     const float viewport_height = (float)window->get_viewport_height();
     const float aspect_ratio = viewport_width / viewport_height;
-    const float x = fabsf(g_vec3.x);
-    const float y = fabsf(g_vec3.y);
-    const float z = fabsf(g_vec3.z);
 
     if (window->is_camera_active && is_camera_position_restored == false)
     {
@@ -181,7 +177,7 @@ void on_update(Window* window, const float elapsed_seconds)
 
     const Vec3 camera_up = y_axis;
     window->camera = window->IsOrthographic
-        ? orthographic_camera(camera_position, -x, x, -y, y, -z, z)
+        ? orthographic_camera(camera_position, -100.0f, 100.0f, -100.0f, 100.0f, -100.0f, 100.0f)
         : perspective_camera(camera_position, window->camera.LookAt, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
 }
 
@@ -336,58 +332,6 @@ void draw_triangle(Window* window, const Triangle triangle)
         window->draw_line(start_2, end_2, pixel_color);
     }
 }
-
-/*
-void draw_triangle(Window* window, const Triangle triangle)
-{
-    const uint32_t viewport_height = window->get_viewport_height();
-    const uint32_t viewport_width = window->get_viewport_width();
-    for (uint32_t i = 0; i < viewport_height; ++i)
-    {
-        for (uint32_t j = 0; j < viewport_width; ++j)
-        {
-            const Vec2 device_coordinate = get_normalized_coordinate(window, vec2((float)j, (float)i));
-
-            // transform by view matrix
-            const Vec4 p0 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p0, 1.0f));
-            const Vec4 p1 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p1, 1.0f));
-            const Vec4 p2 = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(triangle.p2, 1.0f));
-
-            if (p0.w * p1.w * p2.w == 0.0f)
-            {
-                continue;
-            }
-
-            // scale by w
-            const Vec4 p0_ = scalar_x_vec4((1.0f / p0.w), p0);
-            const Vec4 p1_ = scalar_x_vec4((1.0f / p1.w), p1);
-            const Vec4 p2_ = scalar_x_vec4((1.0f / p2.w), p2);
-
-            // cull
-            const bool inside_view = is_within_canonical_view_volume(p0_.x, p0_.y, p0_.z) &&
-                is_within_canonical_view_volume(p1_.x, p1_.y, p1_.z) &&
-                is_within_canonical_view_volume(p2_.x, p2_.y, p2_.z);
-            if (!inside_view)
-                continue;
-
-            // test within triangle and not occluded by something in front
-            const float z = is_within_triangle(device_coordinate, 
-                vec3(p0_.x, p0_.y, p0_.z), 
-                vec3(p1_.x, p1_.y, p1_.z), 
-                vec3(p2_.x, p2_.y, p2_.z));
-            if (z < 0.0f || z > window->z_buffer[i * viewport_width + j])
-                continue;
-
-            MyColor pixel_color = triangle.color;
-            if (window->number_of_lights > 0)
-                pixel_color = color_at_position(window->point_lights[0], vec3(device_coordinate.x, device_coordinate.y, p0.z));
-
-            window->z_buffer[i * viewport_width + j] = z;
-            window->draw_pixel(device_coordinate, pixel_color);
-        }
-    }
-}
-*/
 
 void draw_overlay_text(Window* window, const char* text, const Vec2 position, const MyColor color)
 {
@@ -554,7 +498,7 @@ void draw_cube(Window* window, const Vec3 position, const Vec3 scale, const MyCo
         cube_color
     );
 
-    const Triangle triangle[12] = {
+    const Triangle triangles[12] = {
         front_face_tri_1, front_face_tri_2,
         back_face_tri_1, back_face_tri_2,
         bottom_face_tri_1, bottom_face_tri_2,
@@ -563,7 +507,7 @@ void draw_cube(Window* window, const Vec3 position, const Vec3 scale, const MyCo
         right_face_tri_1, right_face_tri_2,
     };
 
-    draw_triangles(window, triangle, _countof(triangle));
+    draw_triangles(window, triangles, (uint32_t)_countof(triangles));
 }
 
 void draw_light_widget(Window* window, const Vec3 center, const float radius, const MyColor color)

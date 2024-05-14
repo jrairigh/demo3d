@@ -39,20 +39,6 @@ void render_overlapping_triangles(Window* window)
     draw_triangles(window, t, _countof(t));
 }
 
-void render_pixels_to_vanishing_point(Window* window)
-{
-    const float k = g_vec3.x / 10.0f;
-    const float s = g_vec3.y / 10.0f;
-    const float n = g_vec3.z / 10.0f;
-    for (int i = 1; i < n; ++i)
-    {
-        draw_pixel(window, vec3(-k, k, s * i), color(255, 0, 0, 255));
-        draw_pixel(window, vec3(k, k, s * i), color(0, 255, 0, 255));
-        draw_pixel(window, vec3(k, -k, s * i), color(0, 0, 255, 255));
-        draw_pixel(window, vec3(-k, -k, s * i), color(255, 0, 255, 255));
-    }
-}
-
 void render_lines_to_vanishing_point(Window* window)
 {
     const float k = 100.0f;
@@ -111,7 +97,7 @@ void render(Window* window)
         add_light_source(window, light);
     }
 
-    triangle_culling_test(window);
+    //triangle_culling_test(window);
     //render_4_triangles(window);
     //render_overlapping_triangles(window);
     //draw_cube(window, origin, vec3(20.0f, 20.0f, 20.0f), color(0, 255, 0, 255));
@@ -125,6 +111,6 @@ void render(Window* window)
     //draw_overlay_text(window, str2, vec2(20.0, 70.0), color(0, 255, 0, 255));
     //draw_wireframe_box(window, vec3(50.0f, 100.0f, 50.0f), 0.0f, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
     //render_pixels_to_vanishing_point(window);
-    //render_lines_to_vanishing_point(window);
-    //draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
+    render_lines_to_vanishing_point(window);
+    draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
 }
