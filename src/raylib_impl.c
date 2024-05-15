@@ -16,6 +16,7 @@ static bool collapse_control_window = false;
 static Color light_color = { 255, 0, 0, 255 };
 static int mesh_selection_index = 0;
 static bool refresh_meshes = true;
+static bool mouse_captured = true;
 
 typedef enum MeshId
 {
@@ -122,6 +123,8 @@ void raylib_show(const char* title, const uint32_t screen_width, const uint32_t 
 {
     InitWindow(screen_width, screen_height, title);
     GuiLoadStyleDark();
+    HideCursor();
+    DisableCursor();
 
     control_window_height = 1.0f * GetScreenHeight();
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
@@ -137,7 +140,34 @@ void raylib_on_update(Window* window, const float ts)
     window->wasd_key_state[2] = IsKeyDown(KEY_S);
     window->wasd_key_state[3] = IsKeyDown(KEY_D);
 
+    if (mouse_captured)
+    {
+        const Vector2 mouse_delta = GetMouseDelta();
+        window->MouseDelta.x = mouse_delta.x;
+        window->MouseDelta.y = mouse_delta.y;
+    }
+    else
+    {
+        window->MouseDelta.x = 0.0f;
+        window->MouseDelta.y = 0.0f;
+    }
+
     generate_meshes(window->Controls);
+
+    // tab key to toggle capturing mouse movement
+    const bool tab_pressed = IsKeyPressed(KEY_TAB);
+    if (!mouse_captured && tab_pressed)
+    {
+        mouse_captured = true;
+        HideCursor();
+        DisableCursor();
+    }
+    else if (mouse_captured && tab_pressed)
+    {
+        mouse_captured = false;
+        ShowCursor();
+        EnableCursor();
+    }
 }
 
 void raylib_begin_draw()

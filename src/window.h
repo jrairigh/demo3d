@@ -29,6 +29,7 @@ typedef struct Window
     float CameraSpeed;
     float* z_buffer;
     int MeshId;
+    Vec2 MouseDelta;
 
     // functions
     void (*pre_render)();

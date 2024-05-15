@@ -38,31 +38,38 @@ Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
     return vec2(nx, ny);
 }
 
-Vec2 get_position_update_from_input(const Window* window, const float elapsed_seconds)
+Vec4 get_position_update_from_input(const Window* window, const float elapsed_seconds)
 {
     const bool w_key_down = window->wasd_key_state[W_KEY];
     const bool a_key_down = window->wasd_key_state[A_KEY];
     const bool s_key_down = window->wasd_key_state[S_KEY];
     const bool d_key_down = window->wasd_key_state[D_KEY];
-    if (!w_key_down && !a_key_down && !s_key_down && !d_key_down)
-        return vec2(0.0f, 0.0f);
+    float strafe_delta = 0.0f, zoom_delta = 0.0f;
+    if (w_key_down || a_key_down || s_key_down || d_key_down)
+    {
+        const float speed = window->CameraSpeed;
+        zoom_delta = ((int)window->wasd_key_state[W_KEY]) * speed * elapsed_seconds;
+        zoom_delta += ((int)window->wasd_key_state[S_KEY]) * -1.0f * speed * elapsed_seconds;
+        strafe_delta = ((int)window->wasd_key_state[D_KEY]) * speed * elapsed_seconds;
+        strafe_delta += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed * elapsed_seconds;
+    }
 
-    const float speed = window->CameraSpeed;
-    float dz = ((int)window->wasd_key_state[W_KEY]) * speed * elapsed_seconds;
-    dz += ((int)window->wasd_key_state[S_KEY]) * -1.0f * speed * elapsed_seconds;
-    float dx = ((int)window->wasd_key_state[D_KEY]) * speed * elapsed_seconds;
-    dx += ((int)window->wasd_key_state[A_KEY]) * -1.0f * speed * elapsed_seconds;
-
-    return vec2(dx * 0.01f, dz);
+    const float mouse_dx = window->MouseDelta.x;
+    const float mouse_dy = window->MouseDelta.y;
+    return vec4(strafe_delta, zoom_delta, mouse_dx * 0.005f, mouse_dy * 0.005f);
 }
 
 void update_camera_position(Window* window, const float elapsed_seconds)
 {
-    const Vec2 deltas = get_position_update_from_input(window, elapsed_seconds);
+    const Vec4 deltas = get_position_update_from_input(window, elapsed_seconds);
+    const float strafe_delta = deltas.x;
+    const float zoom_delta = deltas.y;
+    const float mouse_dx = deltas.z;
+    const float mouse_dy = deltas.w;
     const float cos_a = window->camera.LookAt.z;
     const float sin_a = window->camera.LookAt.x;
-    const float cos_b = cosf(deltas.x);
-    const float sin_b = sinf(deltas.x);
+    const float cos_b = cosf(mouse_dx);
+    const float sin_b = sinf(mouse_dx);
 
     // cos(a + b) = cos(a)cos(b) - sin(a)sin(b)
     const float z = cos_a * cos_b - sin_a * sin_b;
@@ -74,7 +81,11 @@ void update_camera_position(Window* window, const float elapsed_seconds)
 
 void update_light_position(Window* window, const float elapsed_seconds)
 {
-    const Vec2 deltas = get_position_update_from_input(window, elapsed_seconds);
+    const Vec4 deltas = get_position_update_from_input(window, elapsed_seconds);
+    const float strafe_delta = deltas.x;
+    const float zoom_delta = deltas.y;
+    const float mouse_dx = deltas.z;
+    const float mouse_dy = deltas.w;
     window->point_lights[0].Position = vec3_add_vec3(window->camera.Position, scalar_x_vec3(deltas.y, window->camera.LookAt));
 }
 
