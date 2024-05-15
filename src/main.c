@@ -2,6 +2,7 @@
 #include "mymath.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 
 const int screen_width = 800;
@@ -64,8 +65,8 @@ void triangle_culling_test(Window* window)
         /*2*/vec3(-20.0f, -20.0f, -20.0f),
         /*3*/vec3(0.0f, 20.0f, 0.0f) };
     const int indices[] = {
-        //3,2,1,
-        //3,1,0,
+        3,2,1,
+        3,1,0,
         3,0,2,
     };
 
@@ -89,6 +90,26 @@ void triangle_culling_test(Window* window)
     }
 }
 
+void draw_lines_test(Window* window)
+{
+    const MyColor red = color(255, 0, 0, 255);
+    //const Vec3 start_a = vec3(-20.0f, 20.0f, 0.0f);
+    //const Vec3 start_b = vec3(-1.0f, -1.0f, 0.0f);
+    //
+    //for (int i = 0; i <= 90; i += 3)
+    //{
+    //    const float to_radians = pi / 180.0f;
+    //    const float x = cosf(i * to_radians) - 1.0f;
+    //    const float y = 1.0f - sinf(i * to_radians);
+    //    draw_line_3d(window, start_a, vec3(x, y, 1.0f), red);
+    //}
+
+    //draw_line_3d(window, vec3(-20.0f, 5.0f, -10.0f), vec3(-20.0f, 5.0f, 50.0f), red);
+    draw_line_3d(window, vec3(-20.0f, -10.0f, -10.0f), vec3(-20.0f, -10.0f, 50.0f), red);
+
+    //draw_line_3d(window, start_b, vec3(0.0f, 0.0f, 1.0f), red);
+}
+
 void render(Window* window)
 {
     if (window->number_of_lights == 0)
@@ -97,7 +118,9 @@ void render(Window* window)
         add_light_source(window, light);
     }
 
-    //triangle_culling_test(window);
+    //draw_lines_test(window);
+
+    triangle_culling_test(window);
     //render_4_triangles(window);
     //render_overlapping_triangles(window);
     //draw_cube(window, origin, vec3(20.0f, 20.0f, 20.0f), color(0, 255, 0, 255));
@@ -111,6 +134,6 @@ void render(Window* window)
     //draw_overlay_text(window, str2, vec2(20.0, 70.0), color(0, 255, 0, 255));
     //draw_wireframe_box(window, vec3(50.0f, 100.0f, 50.0f), 0.0f, vec3(0.0f, 0.0f, 0.0f), color(255, 255, 0, 255));
     //render_pixels_to_vanishing_point(window);
-    render_lines_to_vanishing_point(window);
-    draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
+    //render_lines_to_vanishing_point(window);
+    //draw_mesh(window, origin, vec3(30.0f, 30.0f, 30.0f), color(255, 0, 0, 255));
 }

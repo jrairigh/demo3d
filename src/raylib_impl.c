@@ -130,7 +130,7 @@ void raylib_show(const char* title, const uint32_t screen_width, const uint32_t 
 void raylib_on_update(Window* window, const float ts)
 {
     (void)ts;
-    window->is_open = (int)!WindowShouldClose();
+    window->Updating = (int)!WindowShouldClose();
 
     window->wasd_key_state[0] = IsKeyDown(KEY_W);
     window->wasd_key_state[1] = IsKeyDown(KEY_A);
@@ -482,7 +482,7 @@ void draw_controls(Window* window)
         "Light Intesity",
         TextFormat("%2.1f", window->point_lights[0].Intensity),
         &window->point_lights[0].Intensity,
-        0.0f, 10000.0f);
+        0.0f, 300.0f);
 
     GuiToggleSlider(rect(toggle_active_x, toggle_active_y, toggle_active_width, toggle_active_height), "Light;Camera", &window->is_camera_active);
 

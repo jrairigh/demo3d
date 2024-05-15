@@ -8,13 +8,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-//Vec3 g_vec3;
-
 typedef struct Window
 {
     // data
     const char* title;
-    bool is_open;
+    bool Updating;
     bool is_camera_active;
     bool IsOrthographic;
     bool wasd_key_state[4];
@@ -27,7 +25,8 @@ typedef struct Window
     float NearZ;
     float FarZ;
     float CameraSpeed;
-    float* z_buffer;
+    int ZBufferSize;
+    float* ZBuffer;
     int MeshId;
 
     // functions
@@ -56,6 +55,7 @@ void close_window(Window** window);
 
 void draw_pixel(Window* window, const Vec3 p1, const MyColor color);
 void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor color);
+void draw_line_3d(Window* window, const Vec3 start, const Vec3 end, const MyColor color);
 void draw_light_widget(Window* window, const Vec3 center, const float radius, const MyColor color);
 void draw_triangle(Window* window, const Triangle triangle);
 void draw_triangles(Window* window, const Triangles triangles, const uint32_t triangle_count);

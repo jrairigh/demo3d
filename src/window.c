@@ -3,18 +3,15 @@
 
 #include "raylib_impl.h"
 
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 /*TODO
-* 1. Try cross hatching the triangle lines to fill the triangles
-* 2. Allow light to affect each pixel of the triangle
-* 3. Clipping
-* 4. Culling backfaces
-* 5. Z buffer
-* 6. Camera should face whatever the look at direction is.
-* 7. First person shooter camera mode
+* 1. Allow light to affect each pixel of the triangle
+* 2. Clipping
+* 3. Z buffer
 */
 
 enum WASD_Keys
@@ -24,8 +21,6 @@ enum WASD_Keys
     S_KEY,
     D_KEY
 };
-
-//Vec3 g_vec3 = { 0.0f, 0.0f, 1.0f };
 
 static void post_render(Window* window);
 
@@ -38,6 +33,14 @@ Vec2 get_normalized_coordinate(const Window* window, const Vec2 position)
     return vec2(nx, ny);
 }
 
+Vec2 get_screen_coordinates(const Window* window, const Vec2 normalized_coordinates)
+{
+    const float viewport_width = (float)window->get_viewport_width();
+    const float viewport_height = (float)window->get_viewport_height();
+    const float x = roundf(clamp(lerpf(0.0f, viewport_width, (1.0f + normalized_coordinates.x) * 0.5f), 0.0f, viewport_width));
+    const float y = roundf(clamp(lerpf(viewport_height, 0.0f, (1.0f + normalized_coordinates.y) * 0.5f), 0.0f, viewport_height));
+    return vec2(x, y);
+}
 Vec2 get_position_update_from_input(const Window* window, const float elapsed_seconds)
 {
     const bool w_key_down = window->wasd_key_state[W_KEY];
@@ -102,14 +105,28 @@ Window* create_window_impl()
 
 static void clear_z_buffer(Window* window)
 {
-    const uint32_t viewport_width = window->get_viewport_width();
-    const uint32_t viewport_height = window->get_viewport_height();
+    const uint32_t z_buffer_size = window->get_viewport_width() * window->get_viewport_height() * sizeof(float);
+    if (window->ZBufferSize == z_buffer_size)
+    {
+        memset(window->ZBuffer, 0xff, z_buffer_size);
+        return;
+    }
 
-    // TODO need to reallocate z_buffer if viewport changed
-    // The canonical view volume z values are between 0 and 1, so choosing an impossible value than will always be overriden by something in view.
-    const int n = viewport_width * viewport_height;
-    for (int i = 0; i < n; ++i)
-        window->z_buffer[i] = 99.0f;
+    window->ZBufferSize = z_buffer_size;
+    if (window->ZBuffer != NULL)
+        free(window->ZBuffer);
+
+    window->ZBuffer = (float*)malloc(window->ZBufferSize);
+    if (window->ZBuffer == NULL)
+    {
+        printf("Z buffer malloc failed!\n");
+        window->ZBufferSize = 0;
+        window->Updating = false;
+        return;
+    }
+
+    printf("Reallocated Z-buffer [%d bytes]\n", window->ZBufferSize);
+    memset(window->ZBuffer, 0xff, z_buffer_size);
 }
 
 Window* show(const char* title, const uint32_t screen_width, const uint32_t screen_height)
@@ -118,7 +135,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->title = title;
     window->screen_width = screen_width;
     window->screen_height = screen_height;
-    window->is_open = true;
+    window->Updating = true;
     window->is_camera_active = true;
     window->show(title, screen_width, screen_height);
     window->number_of_lights = 0;
@@ -129,17 +146,18 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->CameraSpeed = 100.0f;
     window->MeshId = 6;
     window->Controls = vec4(10.0f, 10.0f, 10.0f, 10.0f);
+    window->ZBufferSize = -1;
+    window->ZBuffer = NULL;
 
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
-    window->z_buffer = (float*)malloc(viewport_width * viewport_height * sizeof(float));
-    clear_z_buffer(window);
-
     const Vec3 camera_look_at = z_axis;
     const Vec3 camera_up = y_axis;
     const Vec3 camera_position = vec3(0.0f, 0.0f, -30.0f);
     const float aspect_ratio = (float)viewport_width / (float)viewport_height;
     window->camera = perspective_camera(camera_position, camera_look_at, camera_up, aspect_ratio, window->FOV, window->NearZ, window->FarZ);
+
+    clear_z_buffer(window);
 
     return window;
 }
@@ -183,7 +201,7 @@ void on_update(Window* window, const float elapsed_seconds)
 
 void update(Window* window)
 {
-    while (window->is_open)
+    while (window->Updating)
     {
         on_update(window, window->get_frame_elapsed_seconds());
         window->pre_render();
@@ -206,7 +224,13 @@ void close_window(Window** window_ptr)
 {
     Window* w = *window_ptr;
     w->close_window();
-    free(w->z_buffer);
+
+    if (w->ZBuffer != NULL)
+    {
+        free(w->ZBuffer);
+        printf("Freed Z-buffer memory\n");
+    }
+
     free(w);
     *window_ptr = NULL;
 }
@@ -265,6 +289,151 @@ void draw_line(Window* window, const Vec3 start, const Vec3 end, const MyColor c
     window->draw_line(vec2(sx, sy), vec2(ex, ey), color);
 }
 
+void draw_line_3d(Window* window, const Vec3 start, const Vec3 end, const MyColor color)
+{
+    const Vec4 projected_start = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(start, 1.0f));
+    const Vec4 projected_end = mat4_x_vec4(window->camera.MVP, vec3_to_vec4(end, 1.0f));
+    const Vec4 projected_start_scaled = scalar_x_vec4((1.0f / projected_start.w), projected_start);
+    const Vec4 projected_end_scaled = scalar_x_vec4((1.0f / projected_end.w), projected_end);
+
+    const int viewport_width = (int)window->get_viewport_width();
+    const Vec2 start_screen_coordinates = get_screen_coordinates(window, vec2(projected_start_scaled.x, projected_start_scaled.y));
+    const Vec2 end_screen_coordinates = get_screen_coordinates(window, vec2(projected_end_scaled.x, projected_end_scaled.y));
+
+    Vec2 start_xy = start_screen_coordinates;
+    Vec2 end_xy = end_screen_coordinates;
+
+    // Check if start and end should be flipped so that less cases need handling.
+    if (start_xy.x > end_xy.x && start_xy.y > end_xy.y)
+    {
+        // Line is moving from bottom-right to top-left of screen.
+        start_xy = end_screen_coordinates;
+        end_xy = start_screen_coordinates;
+    }
+    else if (start_xy.x > end_xy.x && start_xy.y < end_xy.y)
+    {
+        // Line is moving from top-right to bottom-left of screen.
+        // TODO this could be combined with first if-stmt
+        start_xy = end_screen_coordinates;
+        end_xy = start_screen_coordinates;
+    }
+
+    const int end_x = (int)end_xy.x;
+    const int end_y = (int)end_xy.y;
+    int current_x = (int)start_xy.x;
+    int current_y = (int)start_xy.y;
+    float current_z = projected_start.z;
+
+    // f(x, y) = dy*x - dx*y + dx*b
+    // dx is always 0 or positive since flipping is taken care of above.
+    const float dx = (float)end_x - start_xy.x;
+    // dy > 0 means line is moving from top-left to bottom-right of screen
+    // dy == 0 means line is moving horizontally
+    // dy < 0 means line is moving from bottom-left to top-right of screen
+    const float dy = (float)end_y - start_xy.y;
+
+    if (dy >= 0)
+    {
+        while (current_x != end_x && current_y != end_y)
+        {
+            if (dy <= dx)
+            {
+                const float b = start_xy.y;
+                const float t = ((float)current_x - start_xy.x) / dx;
+                const Vec3 point = lerp_vec3(start, end, t);
+                const int z_buffer_xy = current_x + viewport_width * current_y;
+                if (((int*)window->ZBuffer)[z_buffer_xy] == -1 || point.z < window->ZBuffer[z_buffer_xy])
+                {
+                    window->ZBuffer[z_buffer_xy] = point.z;
+
+                    const MyColor pixel_color = window->number_of_lights == 1 ? color_at_position(window->point_lights[0], point) : color;
+                    window->draw_pixel(get_normalized_coordinate(window, vec2(current_x, current_y)), pixel_color);
+                }
+
+                // next step direction
+                const float next_x = (float)current_x + 1.0f;
+                const float mid_y = (float)current_y + 0.5f;
+                const float midpoint_test = dy * next_x - dx * (mid_y - b);
+                if (midpoint_test >= 0.0f)
+                    ++current_y;
+                ++current_x;
+            }
+            else
+            {
+                const float b = start_xy.x;
+                const float t = ((float)current_y - start_xy.y) / dy;
+                const Vec3 point = lerp_vec3(start, end, t);
+                const int z_buffer_xy = current_x + viewport_width * current_y;
+                if (((int*)window->ZBuffer)[z_buffer_xy] == -1 || point.z < window->ZBuffer[z_buffer_xy])
+                {
+                    window->ZBuffer[z_buffer_xy] = point.z;
+
+                    const MyColor pixel_color = window->number_of_lights == 1 ? color_at_position(window->point_lights[0], point) : color;
+                    window->draw_pixel(get_normalized_coordinate(window, vec2(current_x, current_y)), pixel_color);
+                }
+
+                // next step direction
+                const float next_y = (float)current_y + 1.0f;
+                const float mid_x = (float)current_x + 0.5f;
+                const float midpoint_test = dx * next_y - dy * (mid_x - b);
+                if (midpoint_test >= 0.0f)
+                    ++current_x;
+                ++current_y;
+            }
+        }
+    }
+    else
+    {
+        while (current_x != end_x && current_y != end_y)
+        {
+            if (-dy <= dx)
+            {
+                const float b = start_xy.y;
+                const float t = ((float)current_x - start_xy.x) / dx;
+                const Vec3 point = lerp_vec3(start, end, t);
+                const int z_buffer_xy = current_x + viewport_width * current_y;
+                if (((int*)window->ZBuffer)[z_buffer_xy] == -1 || point.z < window->ZBuffer[z_buffer_xy])
+                {
+                    window->ZBuffer[z_buffer_xy] = point.z;
+
+                    const MyColor pixel_color = window->number_of_lights == 1 ? color_at_position(window->point_lights[0], point) : color;
+                    window->draw_pixel(get_normalized_coordinate(window, vec2(current_x, current_y)), pixel_color);
+                }
+
+                // next step direction
+                const float next_x = (float)current_x + 1.0f;
+                const float mid_y = (float)current_y - 0.5f;
+                const float midpoint_test = dy * next_x - dx * (mid_y - b);
+                if (midpoint_test < 0.0f)
+                    --current_y;
+                ++current_x;
+            }
+            else
+            {
+                const float b = start_xy.x;
+                const float t = ((float)current_y - start_xy.y) / dy;
+                const Vec3 point = lerp_vec3(start, end, t);
+                const int z_buffer_xy = current_x + viewport_width * current_y;
+                if (((int*)window->ZBuffer)[z_buffer_xy] == -1 || point.z < window->ZBuffer[z_buffer_xy])
+                {
+                    window->ZBuffer[z_buffer_xy] = point.z;
+
+                    const MyColor pixel_color = window->number_of_lights == 1 ? color_at_position(window->point_lights[0], point) : color;
+                    window->draw_pixel(get_normalized_coordinate(window, vec2(current_x, current_y)), pixel_color);
+                }
+
+                // next step direction
+                const float next_y = (float)current_y - 1.0f;
+                const float mid_x = (float)current_x + 0.5f;
+                const float midpoint_test = dx * next_y - dy * (mid_x - b);
+                if (midpoint_test >= 0.0f)
+                    ++current_x;
+                --current_y;
+            }
+        }
+    }
+}
+
 void draw_triangles(Window* window, const Triangles triangle, const uint32_t triangle_count)
 {
     for (uint32_t i = 0; i < triangle_count; ++i)
@@ -285,51 +454,38 @@ void draw_triangle(Window* window, const Triangle triangle)
     if (p0.w * p1.w * p2.w == 0.0f)
         return;
 
-    // scale by w
+    // tranform coordinates into canonical view volume
     const Vec4 p0_scaled = scalar_x_vec4((1.0f / p0.w), p0);
     const Vec4 p1_scaled = scalar_x_vec4((1.0f / p1.w), p1);
     const Vec4 p2_scaled = scalar_x_vec4((1.0f / p2.w), p2);
 
-    // cull
+    // clip
     const bool inside_view = is_within_canonical_view_volume(p0_scaled.x, p0_scaled.y, p0_scaled.z) &&
         is_within_canonical_view_volume(p1_scaled.x, p1_scaled.y, p1_scaled.z) &&
         is_within_canonical_view_volume(p2_scaled.x, p2_scaled.y, p2_scaled.z);
     if (!inside_view)
         return;
 
+    // cull backfaces
     if (!is_camera_facing_triangle(*camera, triangle))
         return;
 
-    // test within triangle and not occluded by something in front
-    //const float z = is_within_triangle(device_coordinate,
-    //    vec3(p0_.x, p0_.y, p0_.z),
-    //    vec3(p1_.x, p1_.y, p1_.z),
-    //    vec3(p2_.x, p2_.y, p2_.z));
-    //if (z < 0.0f || z > window->z_buffer[i * viewport_width + j])
-    //    return;
-
-    //window->z_buffer[i * viewport_width + j] = z;
-
+    const Vec3 p0_vec2 = vec3(p0_scaled.x, p0_scaled.y, p0_scaled.z);
+    const Vec3 p1_vec2 = vec3(p1_scaled.x, p1_scaled.y, p1_scaled.z);
+    const Vec3 p2_vec2 = vec3(p2_scaled.x, p2_scaled.y, p2_scaled.z);
     const float min_iterations = 200.0f;
     const float min_z = fmaxf(0.1f, fminf(fminf(p0_scaled.z, p1_scaled.z), p2_scaled.z));
-    const Vec2 p0_vec2 = vec2(p0_scaled.x, p0_scaled.y);
-    const Vec2 p1_vec2 = vec2(p1_scaled.x, p1_scaled.y);
-    const Vec2 p2_vec2 = vec2(p2_scaled.x, p2_scaled.y);
     const int iterations = (int)(min_iterations / min_z);
     for (int i = 0; i < iterations; ++i)
     {
         const float t = (float)i / (float)iterations;
-        const Vec2 start_1 = lerp_vec2(p0_vec2, p1_vec2, t);
-        const Vec2 end_1 = lerp_vec2(p0_vec2, p2_vec2, t);
-        const Vec2 start_2 = lerp_vec2(p1_vec2, p0_vec2, t);
-        const Vec2 end_2 = lerp_vec2(p1_vec2, p2_vec2, t);
+        const Vec3 start_1 = lerp_vec3(vec3(p0.x, p0.y, p0.z), vec3(p1.x, p1.y, p1.z), t);
+        const Vec3 end_1 = lerp_vec3(vec3(p0.x, p0.y, p0.z), vec3(p2.x, p2.y, p2.z), t);
+        //const Vec3 start_2 = lerp_vec3(p1_vec2, p0_vec2, t);
+        //const Vec3 end_2 = lerp_vec3(p1_vec2, p2_vec2, t);
 
-        const MyColor pixel_color = window->number_of_lights == 1
-            ? color_at_position(window->point_lights[0], vec3(start_1.x, start_1.y, p0.z))
-            : triangle.color;
-
-        window->draw_line(start_1, end_1, pixel_color);
-        window->draw_line(start_2, end_2, pixel_color);
+        draw_line_3d(window, start_1, end_1, triangle.color);
+        //draw_line_3d(window, start_2, end_2, triangle.color);
     }
 }
 
