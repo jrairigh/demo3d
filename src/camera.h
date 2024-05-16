@@ -6,6 +6,8 @@ typedef struct MyCamera
 {
     Vec3 Position;
     Vec3 LookAt;
+    Vec3 UpDirection;
+    Vec3 StrafeDirection;
     Mat4 MVP;
 } MyCamera;
 
@@ -28,3 +30,5 @@ MyCamera orthographic_camera(
     const float top_plane, 
     const float near_plane, 
     const float far_plane);
+
+void move_camera(MyCamera* camera, const float strafe, const float zoom, const float yaw, const float pitch);

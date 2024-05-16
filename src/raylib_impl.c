@@ -16,7 +16,7 @@ static bool collapse_control_window = false;
 static Color light_color = { 255, 0, 0, 255 };
 static int mesh_selection_index = 0;
 static bool refresh_meshes = true;
-static bool mouse_captured = true;
+static bool mouse_captured = false;
 
 typedef enum MeshId
 {
@@ -123,8 +123,6 @@ void raylib_show(const char* title, const uint32_t screen_width, const uint32_t 
 {
     InitWindow(screen_width, screen_height, title);
     GuiLoadStyleDark();
-    HideCursor();
-    DisableCursor();
 
     control_window_height = 1.0f * GetScreenHeight();
     control_window_width = control_window_screen_width_percentage * GetScreenWidth();
@@ -168,6 +166,8 @@ void raylib_on_update(Window* window, const float ts)
         ShowCursor();
         EnableCursor();
     }
+
+    window->IsCameraSelected ^= IsKeyPressed(KEY_SPACE);
 }
 
 void raylib_begin_draw()
@@ -182,6 +182,16 @@ void raylib_end_draw(Window* window)
 
     // Drawing overlays last so viewport window doesn't render graphics overtop of it
     draw_controls(window);
+
+    if (!mouse_captured)
+    {
+        const int text_width = 182;
+        const int text_height = (int)font_size + 2.0f;
+        const int x = ((int)raylib_viewport_width() - text_width) / 2;
+        const int y = (int)raylib_viewport_height() / 2;
+        DrawRectangle(x, y, text_width, text_height, (Color) { 50, 49, 64, 200 });
+        DrawText("TAB to capture mouse", x, y, text_height, GREEN);
+    }
 
     EndDrawing();
 }
@@ -514,7 +524,7 @@ void draw_controls(Window* window)
         &window->point_lights[0].Intensity,
         0.0f, 10000.0f);
 
-    GuiToggleSlider(rect(toggle_active_x, toggle_active_y, toggle_active_width, toggle_active_height), "Light;Camera", &window->is_camera_active);
+    GuiToggleSlider(rect(toggle_active_x, toggle_active_y, toggle_active_width, toggle_active_height), "Light;Camera", &window->IsCameraSelected);
 
     GuiSetStyle(STATUSBAR, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
     const Vector2 mouse_position = GetMousePosition();

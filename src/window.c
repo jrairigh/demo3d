@@ -66,17 +66,7 @@ void update_camera_position(Window* window, const float elapsed_seconds)
     const float zoom_delta = deltas.y;
     const float mouse_dx = deltas.z;
     const float mouse_dy = deltas.w;
-    const float cos_a = window->camera.LookAt.z;
-    const float sin_a = window->camera.LookAt.x;
-    const float cos_b = cosf(mouse_dx);
-    const float sin_b = sinf(mouse_dx);
-
-    // cos(a + b) = cos(a)cos(b) - sin(a)sin(b)
-    const float z = cos_a * cos_b - sin_a * sin_b;
-    // sin(a + b) = cos(a)sin(b) + sin(a)cos(b)
-    const float x = cos_a * sin_b + sin_a * cos_b;
-    window->camera.LookAt = normalized(vec3(x, 0.0f, z));
-    window->camera.Position = vec3_add_vec3(window->camera.Position, scalar_x_vec3(deltas.y, window->camera.LookAt));
+    move_camera(&window->camera, strafe_delta, zoom_delta, mouse_dx, mouse_dy);
 }
 
 void update_light_position(Window* window, const float elapsed_seconds)
@@ -130,7 +120,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     window->screen_width = screen_width;
     window->screen_height = screen_height;
     window->is_open = true;
-    window->is_camera_active = true;
+    window->IsCameraSelected = true;
     window->show(title, screen_width, screen_height);
     window->number_of_lights = 0;
     window->IsOrthographic = false;
@@ -144,7 +134,7 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
     const uint32_t viewport_width = window->get_viewport_width();
     const uint32_t viewport_height = window->get_viewport_height();
     window->z_buffer = (float*)malloc(viewport_width * viewport_height * sizeof(float));
-    clear_z_buffer(window);
+    //clear_z_buffer(window);
 
     const Vec3 camera_look_at = z_axis;
     const Vec3 camera_up = y_axis;
@@ -157,35 +147,20 @@ Window* show(const char* title, const uint32_t screen_width, const uint32_t scre
 
 void on_update(Window* window, const float elapsed_seconds)
 {
-    static bool is_camera_position_restored = 1;
-    static Vec3 old_camera_position;
     window->on_update(window, elapsed_seconds);
-    clear_z_buffer(window);
+    //clear_z_buffer(window);
+
+    update_camera_position(window, elapsed_seconds);
+
+    if (!window->IsCameraSelected)
+    {
+        window->point_lights[0].Position = window->camera.Position;
+    }
 
     const float viewport_width = (float)window->get_viewport_width();
     const float viewport_height = (float)window->get_viewport_height();
     const float aspect_ratio = viewport_width / viewport_height;
-
-    if (window->is_camera_active && is_camera_position_restored == false)
-    {
-        is_camera_position_restored = true;
-        window->camera.Position = old_camera_position;
-    }
-
-    Vec3 camera_position;
-    if (window->is_camera_active)
-    {
-        update_camera_position(window, elapsed_seconds);
-        camera_position = window->camera.Position;
-        old_camera_position = window->camera.Position;
-    }
-    else
-    {
-        is_camera_position_restored = false;
-        camera_position = window->point_lights[0].Position;
-        update_light_position(window, elapsed_seconds);
-    }
-
+    const Vec3 camera_position = window->camera.Position;
     const Vec3 camera_up = y_axis;
     window->camera = window->IsOrthographic
         ? orthographic_camera(camera_position, -100.0f, 100.0f, -100.0f, 100.0f, -100.0f, 100.0f)

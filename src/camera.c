@@ -44,6 +44,8 @@ MyCamera perspective_camera(
     MyCamera camera;
     camera.Position = position;
     camera.LookAt = look_at;
+    camera.UpDirection = up;
+    camera.StrafeDirection = cross_product(look_at, camera.UpDirection);
     camera.MVP = mat4_x_mat4(perspective_matrix, translate_and_rotate_matrix);
     return camera;
 }
@@ -59,10 +61,36 @@ MyCamera orthographic_camera(
 {
     MyCamera camera;
     camera.LookAt = z_axis;
+    camera.UpDirection = y_axis;
+    camera.StrafeDirection = x_axis;
     camera.Position = position;
     camera.MVP = orthographic_mat4(left_plane, right_plane, bottom_plane, top_plane, near_plane, far_plane);
     camera.MVP.v03 = -position.x;
     camera.MVP.v13 = -position.y;
     camera.MVP.v23 = -position.z;
     return camera;
+}
+
+void move_camera(MyCamera* camera, const float strafe, const float zoom, const float yaw, const float pitch)
+{
+    const float cos_a = camera->LookAt.z;
+    const float sin_a = camera->LookAt.x;
+    const float cos_b = cosf(yaw);
+    const float sin_b = sinf(yaw);
+
+    // cos(a + b) = cos(a)cos(b) - sin(a)sin(b)
+    const float z = cos_a * cos_b - sin_a * sin_b;
+    // sin(a + b) = cos(a)sin(b) + sin(a)cos(b)
+    const float x = cos_a * sin_b + sin_a * cos_b;
+    const Vec3 new_look_at = normalized(vec3(x, 0.0f, z));
+    const Vec3 new_strafe_direction = cross_product(new_look_at, camera->UpDirection);
+
+    const Vec3 forward_amount = scalar_x_vec3(zoom, new_look_at);
+    const Vec3 strafe_amount = scalar_x_vec3(strafe, new_strafe_direction);
+    const Vec3 move_vector = vec3_add_vec3(forward_amount, strafe_amount);
+    const Vec3 new_position = vec3_add_vec3(camera->Position, move_vector);
+
+    camera->LookAt = new_look_at;
+    camera->StrafeDirection = new_strafe_direction;
+    camera->Position = new_position;
 }

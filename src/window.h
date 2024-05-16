@@ -15,7 +15,7 @@ typedef struct Window
     // data
     const char* title;
     bool is_open;
-    bool is_camera_active;
+    bool IsCameraSelected;
     bool IsOrthographic;
     bool wasd_key_state[4];
     uint32_t screen_width, screen_height;
